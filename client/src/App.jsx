@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Navbar from './components/Navbar'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { data, Route, Routes, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Footer from './components/Footer'
 import AllRooms from './pages/AllRooms'
@@ -14,7 +14,7 @@ import ListRoom from './pages/hotelOwner/ListRoom'
 
 
 const App = () => {
-
+  
   const isOwnerPath = useLocation().pathname.includes("owner");
 
   return (

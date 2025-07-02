@@ -1,0 +1,14 @@
+.upload-images{
+    color: gray 500;
+    margin-top: 10px;
+}
+
+
+img {
+    max-height: 13;
+    cursor: pointer;
+    opacity: 80%;
+    
+
+
+}

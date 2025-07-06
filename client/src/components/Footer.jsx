@@ -33,7 +33,7 @@ const Footer = () => {
         </div>
     </div>
     <p class="pt-4 text-center text-xs md:text-sm pb-5">
-        Copyright 2024 © Company name. All Right Reserved.
+        Copyright 2025 © Rosario Resort and Hotel. All Right Reserved.
     </p>
 </footer>
   )

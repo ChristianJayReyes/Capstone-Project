@@ -10,6 +10,10 @@ import Layout from './pages/hotelOwner/Layout'
 import Dashboard from './pages/hotelOwner/Dashboard'
 import AddRoom from './pages/hotelOwner/AddRoom'
 import ListRoom from './pages/hotelOwner/ListRoom'
+import Events from './pages/Events'
+import Dining from './pages/Dining'
+import AddEvent from './pages/hotelOwner/AddEvent'
+
 
 
 
@@ -23,12 +27,15 @@ const App = () => {
       <Routes>
         <Route path='/' element={<Home/>} />
         <Route path='/rooms' element={<AllRooms/>} />
+        <Route path='/events' element={<Events />} />
+        <Route path='/dining' element={<Dining/>}/>
         <Route path='/rooms/:id' element={<RoomDetails/>} />
         <Route path='/my-bookings' element={<MyBookings/>} />
         <Route path='/owner' element={<Layout/>}>
             <Route index element={<Dashboard />} />
             <Route path="add-room" element={<AddRoom />} />
             <Route path="list-room" element={<ListRoom />} />
+            <Route path="add-event" element={<AddEvent />} />
         </Route>
       </Routes>
     </div>

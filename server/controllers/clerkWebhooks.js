@@ -22,8 +22,7 @@ const clerkWebhooks = async (req, res) => {
       _id: data.id,
       email: data.email_addresses[0].email_address,
       username: data.first_name + " " + data.last_name,
-      image: data.profile_image_url || data.image_url,
-      recentSearchedRooms: "",
+      image: data.image_url,
     };
 
     //Switch case to handle different webhook events
@@ -50,7 +49,7 @@ const clerkWebhooks = async (req, res) => {
     });
   } catch (error) {
     console.log(error.message);
-    res.status(400).json({ success: false, message: error.message });
+    res.json({ success: false, message: error.message });
   }
 };
 

@@ -38,7 +38,10 @@ import uploadArea from "./uploadArea.svg";
 import totalBookingIcon from "./totalBookingIcon.svg";
 import totalRevenueIcon from "./totalRevenueIcon.svg";
 import logoPicture from "./logoPicture.jpg";
-import background from "./background.jpg";  
+import background from "./background.jpg";
+import promo3 from "./promo3.jpg"; 
+import diff_events from "./diff_events.jpg"; 
+import wedding_event from "./wedding_event.jpg"
 
 
 export const assets = {
@@ -75,7 +78,10 @@ export const assets = {
     totalBookingIcon,
     totalRevenueIcon,
     logoPicture,
-    background
+    background,
+    promo3,
+    diff_events,
+    wedding_event
 }
 
 export const cities = [
@@ -85,9 +91,13 @@ export const cities = [
     "London",
 ];
 
+export const eventImages = {
+    weddings: wedding_event,
+}
+
 // Exclusive Offers Dummy Data
 export const exclusiveOffers = [
-    { _id: 1, title: "Summer Escape Package", description: "Enjoy a complimentary night and daily breakfast", priceOff: 25, expiryDate: "Aug 31", image: exclusiveOfferCardImg1 },
+    { _id: 1, title: "Summer Escape Package", description: "Enjoy a complimentary night and daily breakfast", priceOff: 25, expiryDate: "Aug 31", image: promo3 },
     { _id: 2, title: "Romantic Getaway", description: "Special couples package including spa treatment", priceOff: 20, expiryDate: "Sep 20", image: exclusiveOfferCardImg2 },
     { _id: 3, title: "Luxury Retreat", description: "Book 60 days in advance and save on your stay at any of our luxury properties worldwide.", priceOff: 30, expiryDate: "Sep 25", image: exclusiveOfferCardImg3 },
 ]
@@ -148,8 +158,8 @@ export const roomsDummyData = [
     {
         "_id": "67f7647c197ac559e4089b96",
         "hotel": hotelDummyData,
-        "roomType": "Double Bed",
-        "pricePerNight": 399,
+        "roomType": "Single Bed",
+        "pricePerNight": 3000,
         "amenities": ["Room Service", "Free WiFi", "Pool Access"],
         "images": [roomImg1, roomImg2, roomImg3, roomImg4],
         "isAvailable": false,
@@ -161,7 +171,7 @@ export const roomsDummyData = [
         "_id": "67f76452197ac559e4089b8e",
         "hotel": hotelDummyData,
         "roomType": "Double Bed",
-        "pricePerNight": 299,
+        "pricePerNight": 3500,
         "amenities": ["Free WiFi", "Room Service", "Pool Access"],
         "images": [roomImg2, roomImg3, roomImg4, roomImg1],
         "isAvailable": true,
@@ -172,8 +182,8 @@ export const roomsDummyData = [
     {
         "_id": "67f76406197ac559e4089b82",
         "hotel": hotelDummyData,
-        "roomType": "Double Bed",
-        "pricePerNight": 249,
+        "roomType": "Family Room",
+        "pricePerNight": 4000,
         "amenities": ["Free WiFi", "Free Breakfast", "Room Service"],
         "images": [roomImg3, roomImg4, roomImg1, roomImg2],
         "isAvailable": true,
@@ -184,8 +194,8 @@ export const roomsDummyData = [
     {
         "_id": "67f763d8197ac559e4089b7a",
         "hotel": hotelDummyData,
-        "roomType": "Single Bed",
-        "pricePerNight": 199,
+        "roomType": "Luxury Room",
+        "pricePerNight": 4500,
         "amenities": ["Free WiFi", "Room Service", "Pool Access"],
         "images": [roomImg4, roomImg1, roomImg2, roomImg3],
         "isAvailable": true,

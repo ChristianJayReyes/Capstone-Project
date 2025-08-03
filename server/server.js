@@ -1,31 +1,29 @@
+// server.js
+
 import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import connectDB from "./configs/db.js";
-import { clerkMiddleware } from '@clerk/express'
+import { clerkMiddleware } from '@clerk/express';
 import clerkWebhooks from "./controllers/clerkWebhooks.js";
 
-
-
-connectDB()
+connectDB();
 
 const app = express();
-app.use(cors()); //Enable cross origin resource sharing
+app.use(cors());
 
-//Middleware
+// Enable JSON parsing
 app.use(express.json());
+
+//Clerk middleware applies only for user-authenticated routes
 app.use(clerkMiddleware());
 
-//API to listen to Clerk webhooks
-app.post("/api/clerk", clerkWebhooks);
+// Register Clerk Webhook BEFORE applying clerkMiddleware
+app.use("/api/clerk", clerkWebhooks);
 
-app.get("/", (req, res) => res.send("API is working fineest"));
+// Test route
+app.get("/", (req, res) => res.send("API is working fine"));
 
-//Port configuration
+// Port
 const PORT = process.env.PORT || 3000;
-
-
-
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-

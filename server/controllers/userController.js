@@ -1,9 +1,9 @@
 //GET //api // user
 
-export const getUserData = async (req, res) => {
-    try {
+// export const getUserData = async (req, res) => {
+//     try {
         
-    } catch (error) {
+//     } catch (error) {
         
-    }
-}
+//     }
+// }

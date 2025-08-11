@@ -13,6 +13,11 @@ import ListRoom from './pages/hotelOwner/ListRoom'
 import Events from './pages/Events'
 import Dining from './pages/Dining'
 import AddEvent from './pages/hotelOwner/AddEvent'
+import LoginForm from './components/LoginForm'
+import About from './pages/About'
+import {Toaster} from 'react-hot-toast'
+import { useAppContext } from './context/AppContext'
+import HotelReg from './components/HotelReg'
 
 
 
@@ -20,17 +25,26 @@ import AddEvent from './pages/hotelOwner/AddEvent'
 const App = () => {
   
   const isOwnerPath = useLocation().pathname.includes("owner");
+  const {showHotelReg} = useAppContext();
+
 
   return (
-    <div>{!isOwnerPath && <Navbar />}
+    <div>
+      <Toaster />
+      {!isOwnerPath && <Navbar />}
+      {showHotelReg && <HotelReg />}
     <div className='min-h-[70vh]'>
       <Routes>
         <Route path='/' element={<Home/>} />
         <Route path='/rooms' element={<AllRooms/>} />
         <Route path='/events' element={<Events />} />
         <Route path='/dining' element={<Dining/>}/>
+        <Route path='/about' element={<About/>}/>
+        
         <Route path='/rooms/:id' element={<RoomDetails/>} />
         <Route path='/my-bookings' element={<MyBookings/>} />
+        <Route path='/login' element={<LoginForm/>}/>
+        
         <Route path='/owner' element={<Layout/>}>
             <Route index element={<Dashboard />} />
             <Route path="add-room" element={<AddRoom />} />

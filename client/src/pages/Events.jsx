@@ -9,18 +9,17 @@ const EventPage = () => {
     <div>
       {/* HERO SECTION */}
       <section
-        className="hero bg-cover bg-center h-screen relative flex items-center justify-center"
-        style={{ backgroundImage: `url(${assets.diff_events})` }}
+        className='hero bg-no-repeat bg-cover bg-center h-screen relative flex items-center justify-center'
       >
-        <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm"></div>
+        <img src={assets.diff_events} alt="Event Background" className="absolute inset-0 w-full h-full object-cover blur-xs" />
         <div className="relative z-10 text-center text-white px-6 max-w-2xl">
-          <h1 className="text-5xl md:text-7xl font-extrabold mb-6 drop-shadow-lg">
+          <h1 className="text-5xl md:text-7xl font-extrabold mb-6 drop-shadow-2xl text-white">
             Plan Your Dream Event
           </h1>
-          <p className="text-xl md:text-2xl mb-8 tracking-wide">
+          <p className="text-xl md:text-2xl mb-8 tracking-wide text-gray-200">
             Weddings • Graduations • Birthdays • Anniversaries • Reunions
           </p>
-          <button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 px-8 py-3 rounded-full text-white font-semibold shadow-lg hover:scale-105">
+          <button onClick={()=>document.getElementById('packages').scrollIntoView({behavior: 'smooth'})} className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 transition-all duration-300 px-8 py-3 rounded-full text-white font-semibold shadow-xl hover:scale-105" >
             Explore Packages
           </button>
         </div>
@@ -38,6 +37,7 @@ const EventPage = () => {
             "Birthdays",
             "Anniversaries",
             "Reunions",
+            "Christenings",
           ].map((category) => (
             <div
               key={category}
@@ -66,7 +66,7 @@ const EventPage = () => {
       <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
 
       {/* GALLERY / CAROUSEL */}
-      <div className="my-20  flex flex-col items-center">
+      <div className="my-20  flex flex-col items-center bg-gray-200 py-10">
         <h2 className="text-4xl font-bold text-center mb-14 text-gray-800 font-playfair">
           Event Gallery
         </h2>
@@ -76,7 +76,7 @@ const EventPage = () => {
       <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
 
       {/* EVENT PACKAGES / INCLUSIONS */}
-      <section className="packages container mx-auto py-20 px-4 bg-gradient-to-b from-white to-gray-50 rounded-xl">
+      <section className="packages container mx-auto py-20 px-4 bg-gradient-to-b from-white to-gray-50 rounded-xl" id="packages">
         <h2 className="text-4xl font-bold text-center mb-14 text-gray-800">
           Our Event Packages
         </h2>
@@ -122,7 +122,7 @@ const EventPage = () => {
       <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
 
       {/* TESTIMONIALS */}
-      <div>
+      <div className="bg-gray-200 py-20">
         <Testimonial />
       </div>
 

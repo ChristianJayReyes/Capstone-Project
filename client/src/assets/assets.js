@@ -41,7 +41,10 @@ import logoPicture from "./logoPicture.jpg";
 import background from "./background.jpg";
 import promo3 from "./promo3.jpg"; 
 import diff_events from "./diff_events.jpg"; 
-import wedding_event from "./wedding_event.jpg"
+import wedding_event from "./wedding_event.jpg";
+import PresidentialSuite from "./PresidentialSuite.jpg";
+import PS_SingleBed from "./PS_SingleBed.jpg";
+import DoubleBed from "./DoubleBed.jpg";
 
 
 export const assets = {
@@ -81,18 +84,24 @@ export const assets = {
     background,
     promo3,
     diff_events,
-    wedding_event
+    wedding_event,
+    PresidentialSuite,
+    PS_SingleBed,
+    PS_SingleBed,
+    DoubleBed
 }
 
 export const cities = [
-    "Delux",
-    "Single",
-    "Double",
-    "London",
+    "Presidential Suite (Double Bed)",
+    "Single Bed",
+    "Double Bed",
+    "King Size",
 ];
 
 export const eventImages = {
     weddings: wedding_event,
+    
+
 }
 
 // Exclusive Offers Dummy Data
@@ -161,7 +170,7 @@ export const roomsDummyData = [
         "roomType": "Single Bed",
         "pricePerNight": 3000,
         "amenities": ["Room Service", "Free WiFi", "Pool Access"],
-        "images": [roomImg1, roomImg2, roomImg3, roomImg4],
+        "images": [PS_SingleBed, PS_SingleBed, PresidentialSuite, roomImg4],
         "isAvailable": false,
         "createdAt": "2025-04-10T06:26:04.013Z",
         "updatedAt": "2025-04-10T06:26:04.013Z",

@@ -54,7 +54,7 @@ const RoomDetails = () => {
             </div>
             </div>
             {/* Room Price */} 
-            <p className='text-2xl font-medium'>${room.pricePerNight}/night</p>  
+            <p className='text-2xl font-medium'>₱{room.pricePerNight}/night</p>  
         </div>
         {/* Check In/Out */}
         <form className='flex flex-col md:flex-row items-start md:items-center justify-between bg-white shadow-[0px_0px_20px_rgba(0,0,0,0.15)] rounded-xl p-6 mx-auto mt-16 max-w-6xl'>
@@ -92,7 +92,7 @@ const RoomDetails = () => {
         </div>
         <div className='max-w-3xl border-y border-gray-300 my-15 py-10 text-gray-500'>
             <p>
-                Discover the perfect blend of luxury and comfort at Rosario Resort and Hotel. Our city resort offers a unique escape, where modern amenities meet the vibrant energy of urban life. Whether you're here for business or leisure, we ensure an unforgettable stay with exceptional service and stunning surroundings.
+                Discover the perfect blend of luxury and comfort at Rosario Resort and Hotel. Our provincial resort offers a unique escape, where modern amenities meet the vibrant energy of urban life. Whether you're here for business or leisure, we ensure an unforgettable stay with exceptional service and stunning surroundings.
             </p>
         </div>
         {/* Hotel Manager */}

@@ -3,10 +3,18 @@
 
 
 
+
 @theme {
   --color-primary: #2563EB ;
   --color-secondary: #FBBF24 ;
 }
+@font-face {
+  font-family: 'Playwrite HU';
+  src: url('/fonts/PlaywriteHU.woff2') format('woff2'); /* Adjust path */
+  font-weight: 400;
+  font-style: normal;
+}
+
 *{
   font-family: Outfit;
 }
@@ -15,5 +23,16 @@
 
 .font-playfair{
   font-family: Playfair !important;
+}
+
+.font-lavishly{
+  font-family: 'Lavishly Yours', cursive !important;
+}
+
+.font-playwrite {
+  font-family: 'Playwrite HU', cursive !important;
+  font-style: normal;
+  font-optical-sizing: auto;
+  font-weight: 400;
 }
 

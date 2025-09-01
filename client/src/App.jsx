@@ -16,10 +16,8 @@ import AddEvent from './pages/hotelOwner/AddEvent'
 import LoginForm from './components/LoginForm'
 import About from './pages/About'
 import {Toaster} from 'react-hot-toast'
-import { useAppContext } from './context/AppContext'
 import HotelReg from './components/HotelReg'
-
-
+import { useAppContext } from './context/AppContext'
 
 
 const App = () => {

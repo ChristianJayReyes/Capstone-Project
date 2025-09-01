@@ -2,8 +2,12 @@ import React, { useState } from "react";
 import "../../styles/addroom.css";
 import Title from "../../components/Title";
 import { assets } from "../../assets/assets";
+import { useAppContext } from "../../context/AppContext";
+import { toast } from "react-hot-toast";
+import axios from "axios";
 
 const AddRoom = () => {
+  const { axios, getToken } = useAppContext();
   const [images, setImages] = useState({
     1: null,
     2: null,
@@ -22,8 +26,67 @@ const AddRoom = () => {
     },
   });
 
+  const [loading, setLoading] = useState(false);
+
+  const onSubmitHandler = async (e) => {
+    e.preventDefault();
+    // To check if all inputs are filled
+    if (
+      !inputs.roomType ||
+      inputs.pricePerNight ||
+      !inputs.amenities ||
+      !Object.values(images).some((image) => image)
+    ) {
+      toast.error("Please fill in all fields and upload images.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("roomType", inputs.roomType);
+      formData.append("pricePerNight", inputs.roompricePerNightType);
+      //Converting Amenities to Array & keeping only enabled Amenities
+      const amenities = Object.keys(inputs.amenities).filter(
+        (key) => inputs.amenities[key]
+      );
+      formData.append("amenities", JSON.stringify(amenities));
+
+      //Adding images to form data
+      Object.keys(images).forEach((key) => {
+        images[key] && formData.append("images", images[key]);
+      });
+
+      const { data } = await axios.post("/api/rooms/", formData, {
+        headers: { Authorization: `Bearer ${await getToken}` },
+      });
+      if (data.success) {
+        toast.success(data.message);
+        setInputs({
+          roomType: "",
+          pricePerNight: 0,
+          amenities: {
+            "Free Wi-Fi": false,
+            "Free Breakfast": false,
+            "Room Service": false,
+            "Full Access": false,
+          },
+        });
+        setImages({ 1: null, 2: null, 3: null, 4: null });
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error("An error occurred while adding the room.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form className="max-w-3xl mx-auto bg-white shadow-xl p-6 rounded-2xl mt-10">
+    <form
+      onSubmit={onSubmitHandler}
+      className="max-w-3xl mx-auto bg-white shadow-xl p-6 rounded-2xl mt-10"
+    >
       <Title
         align="center"
         font="outfit"

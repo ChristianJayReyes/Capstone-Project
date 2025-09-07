@@ -16,9 +16,9 @@ const Dining = () => {
   // Default Unsplash placeholders
   const HeroImage = "https://source.unsplash.com/1600x900/?restaurant,dining";
   const featured = [
-    "https://source.unsplash.com/1200x800/?salmon,food",
-    "https://source.unsplash.com/1200x800/?pasta,italian",
-    "https://source.unsplash.com/1200x800/?salad,healthy",
+    "https://www.cookingclassy.com/wp-content/uploads/2018/05/grilled-salmon-3.jpg",
+    "https://bellyfull.net/wp-content/uploads/2023/02/Spaghetti-Carbonara-blog-1.jpg",
+    "https://handletheheat.com/wp-content/uploads/2016/08/ultimate-classic-cheesecake-recipe-SQUARE.jpg",
   ];
 
   useEffect(() => {
@@ -33,35 +33,35 @@ const Dining = () => {
       name: "Grilled Salmon",
       category: "Main Course",
       price: "₱450",
-      img: "https://source.unsplash.com/400x300/?salmon",
+      img: "https://www.cookingclassy.com/wp-content/uploads/2018/05/grilled-salmon-3.jpg",
       desc: "Fresh salmon with herbs.",
     },
     {
       name: "Pasta Carbonara",
       category: "Main Course",
       price: "₱350",
-      img: "https://source.unsplash.com/400x300/?pasta",
+      img: "https://bellyfull.net/wp-content/uploads/2023/02/Spaghetti-Carbonara-blog-1.jpg",
       desc: "Classic creamy pasta.",
     },
     {
       name: "Caesar Salad",
       category: "Starters",
       price: "₱220",
-      img: "https://source.unsplash.com/400x300/?salad",
+      img: "https://s23209.pcdn.co/wp-content/uploads/2023/01/220905_DD_Chx-Caesar-Salad_051.jpg",
       desc: "Crisp romaine with dressing.",
     },
     {
       name: "Cheesecake",
       category: "Desserts",
       price: "₱200",
-      img: "https://source.unsplash.com/400x300/?cheesecake",
+      img: "https://handletheheat.com/wp-content/uploads/2016/08/ultimate-classic-cheesecake-recipe-SQUARE.jpg",
       desc: "Rich & creamy cheesecake.",
     },
     {
       name: "Red Wine",
       category: "Beverages",
       price: "₱300",
-      img: "https://source.unsplash.com/400x300/?wine",
+      img: "https://www.gardeningknowhow.com/wp-content/uploads/2022/07/red-wine-grapes.jpg",
       desc: "Imported fine red wine.",
     },
   ];

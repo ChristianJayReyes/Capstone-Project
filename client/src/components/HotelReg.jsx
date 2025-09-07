@@ -1,10 +1,9 @@
 import React, { use, useState } from "react";
-import { assets } from "../assets/assets";
+import { assets, cities } from "../assets/assets";
 import { useAppContext } from "../context/AppContext";
 
 const HotelReg = () => {
-  const { setShowHotelReg, axios, getToken, setIsOwner } = useAppContext();
-  const cities = ["Manila", "Cebu", "Davao"]; // temp data
+  const { setShowHotelReg, axios, getToken, setIsOwner } = useAppContext(); 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
@@ -106,7 +105,7 @@ const HotelReg = () => {
             </select>
           </div>
 
-          <button className="bg-indigo-500 hover:bg-indigo-600 transition-all text-white mr-auto px-6 py-2 rounded cursor-pointer mt-6">
+          <button type="submit" className="bg-indigo-500 hover:bg-indigo-600 transition-all text-white mr-auto px-6 py-2 rounded cursor-pointer mt-6">
             Register
           </button>
         </div>

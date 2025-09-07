@@ -13,11 +13,11 @@ import ListRoom from './pages/hotelOwner/ListRoom'
 import Events from './pages/Events'
 import Dining from './pages/Dining'
 import AddEvent from './pages/hotelOwner/AddEvent'
-import LoginForm from './components/LoginForm'
 import About from './pages/About'
 import {Toaster} from 'react-hot-toast'
 import HotelReg from './components/HotelReg'
 import { useAppContext } from './context/AppContext'
+import LoginForm from './pages/LoginForm'
 
 
 const App = () => {
@@ -38,10 +38,10 @@ const App = () => {
         <Route path='/events' element={<Events />} />
         <Route path='/dining' element={<Dining/>}/>
         <Route path='/about' element={<About/>}/>
-        
+        <Route path='/login' element={<LoginForm />} />
+
         <Route path='/rooms/:id' element={<RoomDetails/>} />
         <Route path='/my-bookings' element={<MyBookings/>} />
-        <Route path='/login' element={<LoginForm/>}/>
         
         <Route path='/owner' element={<Layout/>}>
             <Route index element={<Dashboard />} />

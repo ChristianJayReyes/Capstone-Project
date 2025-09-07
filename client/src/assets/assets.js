@@ -45,6 +45,7 @@ import wedding_event from "./wedding_event.jpg";
 import PresidentialSuite from "./PresidentialSuite.jpg";
 import PS_SingleBed from "./PS_SingleBed.jpg";
 import DoubleBed from "./DoubleBed.jpg";
+import carbonara from "./carbonara.jpg";
 
 
 export const assets = {
@@ -88,7 +89,8 @@ export const assets = {
     PresidentialSuite,
     PS_SingleBed,
     PS_SingleBed,
-    DoubleBed
+    DoubleBed,
+    carbonara,
 }
 
 export const cities = [
@@ -153,10 +155,9 @@ export const userDummyData = {
 export const hotelDummyData = {
     "_id": "67f76393197ac559e4089b72",
     "name": "Urbanza Suites",
-    "address": "Main Road  123 Street , 23 Colony",
+    "address": "Brgy. Quilib, Rosario, Batangas",
     "contact": "+0123456789",
     "owner": userDummyData,
-    "city": "New York",
     "createdAt": "2025-04-10T06:22:11.663Z",
     "updatedAt": "2025-04-10T06:22:11.663Z",
     "__v": 0

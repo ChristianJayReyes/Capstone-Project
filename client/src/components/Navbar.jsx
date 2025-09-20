@@ -4,26 +4,6 @@ import { assets } from "../assets/assets";
 import { useAppContext } from "../context/AppContext";
 import LoginForm from "../pages/LoginForm";
 
-const BookIcon = () => (
-  <svg
-    className="w-4 h-4 text-gray-700"
-    aria-hidden="true"
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    fill="none"
-    viewBox="0 0 24 24"
-  >
-    <path
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M5 19V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v13H7a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h12M9 3v14m7 0v4"
-    />
-  </svg>
-);
-
 const Navbar = () => {
   const navLinks = [
     { name: "Home", path: "/" },
@@ -36,10 +16,42 @@ const Navbar = () => {
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showLogin, setShowLogin] = useState(false); // modal state
-  const location = useLocation();
+  const [showLogin, setShowLogin] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const { user, navigate, isOwner, setShowHotelReg } = useAppContext();
+  const location = useLocation();
+  const { navigate, isOwner, setShowHotelReg } = useAppContext();
+
+  // Load user from localStorage
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (user) {
+      setCurrentUser(JSON.parse(user));
+    }
+  }, []);
+  useEffect(() => {
+    const clockElement = document.getElementById("dropdown-clock");
+
+    const updateClock = () => {
+      const now = new Date();
+      const date = now.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const time = now.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      if (clockElement) clockElement.textContent = `${date} • ${time}`;
+    };
+
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (location.pathname !== "/") {
@@ -48,14 +60,20 @@ const Navbar = () => {
     } else {
       setIsScrolled(false);
     }
-    setIsScrolled((prev) => (location.pathname !== "/" ? true : prev));
-
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    setCurrentUser(null);
+    setProfileMenuOpen(false);
+    navigate("/");
+  };
 
   return (
     <>
@@ -78,9 +96,9 @@ const Navbar = () => {
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-4 lg:gap-8">
           {navLinks.map((link, i) => (
-            <a
+            <Link
               key={i}
-              href={link.path}
+              to={link.path}
               className={`group flex flex-col gap-0.5 ${
                 isScrolled ? "text-gray-700" : "text-white"
               }`}
@@ -91,10 +109,10 @@ const Navbar = () => {
                   isScrolled ? "bg-gray-700" : "bg-white"
                 } h-0.5 w-0 group-hover:w-full transition-all duration-300`}
               />
-            </a>
+            </Link>
           ))}
 
-          {user && (
+          {/* {currentUser && (
             <button
               className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${
                 isScrolled ? "text-black" : "text-white"
@@ -105,18 +123,80 @@ const Navbar = () => {
             >
               {isOwner ? "Dashboard" : "List Your Hotel"}
             </button>
-          )}
+          )} */}
         </div>
 
         {/* Desktop Right */}
-        <div className="hidden md:flex items-center gap-4">
-          <img
-            src={assets.searchIcon}
-            alt="search"
-            className={`$ {isScrolled && 'invert'} h-7 transition-all duration-500`}
-          />
+        <div className="hidden md:flex items-center gap-4 relative">
+          {currentUser ? (
+            <div className="relative">
+              <img
+                src={currentUser.photo || "https://i.pravatar.cc/40"} // ✅ now uses "photo"
+                alt="user avatar"
+                className="h-15 w-15 rounded-full object-cover cursor-pointer border"
+                onClick={() => setProfileMenuOpen((prev) => !prev)}
+              />
 
-          {!user && (
+              {/* Dropdown Menu */}
+              {profileMenuOpen && (
+                <div className="absolute right-0 mt-3 w-72 rounded-2xl bg-white/80 backdrop-blur-xl shadow-2xl border border-gray-200 overflow-hidden animate-fadeIn">
+                  {/* User Info */}
+                  <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white">
+                    <div className="relative">
+                      <div className="absolute -inset-0.5 rounded-full bg-gradient-to-tr from-yellow-400 to-pink-500 animate-spin-slow"></div>
+                      <img
+                        src={
+                          currentUser.photo || "https://i.pravatar.cc/100"
+                        }
+                        alt="user avatar"
+                        className="relative h-14 w-14 rounded-full object-cover border-2 border-white"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <p className="font-semibold text-sm">
+                        {currentUser.full_name}
+                      </p>
+                      <p className="text-xs opacity-90">{currentUser.email}</p>
+                    </div>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="flex flex-col py-2">
+                    <button
+                      onClick={() => {
+                        navigate("/update-profile");
+                        setProfileMenuOpen(false);
+                      }}
+                      className="w-full text-left px-5 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all flex items-center gap-2"
+                    >
+                      <span>👤</span> Update Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate("/my-bookings");
+                        setProfileMenuOpen(false);
+                      }}
+                      className="w-full text-left px-5 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all flex items-center gap-2"
+                    >
+                      <span>📖</span> My Bookings
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-5 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-all flex items-center gap-2"
+                    >
+                      <span>🚪</span> Logout
+                    </button>
+                  </div>
+
+                  {/* Real-time Clock */}
+                  <div className="px-5 py-3 border-t border-gray-200 text-xs text-gray-600 flex justify-between items-center bg-gray-50/70">
+                    <span className="font-medium">🕒 Local Time</span>
+                    <span id="dropdown-clock" className="font-mono"></span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
             <button
               onClick={() => setShowLogin(true)}
               className="bg-black text-white px-8 py-2.5 rounded-full ml-4 transition-all duration-500 cursor-pointer"
@@ -132,40 +212,8 @@ const Navbar = () => {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             src={assets.menuIcon}
             alt=""
-            className={'${isScrolled $$ "invert"} h-4'}
+            className="h-6"
           />
-        </div>
-
-        {/* Mobile Menu */}
-        <div
-          className={`fixed top-0 left-0 w-full h-screen bg-white text-base flex flex-col md:hidden items-center justify-center gap-6 font-medium text-gray-800 transition-all duration-500 ${
-            isMenuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <button
-            className="absolute top-4 right-4"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <img src={assets.closeIcon} alt="close-menu" className="h-6.5" />
-          </button>
-
-          {navLinks.map((link, i) => (
-            <a key={i} href={link.path} onClick={() => setIsMenuOpen(false)}>
-              {link.name}
-            </a>
-          ))}
-
-          {!user && (
-            <button
-              onClick={() => {
-                setIsMenuOpen(false);
-                setShowLogin(true);
-              }}
-              className="bg-black text-white px-8 py-2.5 rounded-full transition-all duration-500"
-            >
-              Login
-            </button>
-          )}
         </div>
       </nav>
 

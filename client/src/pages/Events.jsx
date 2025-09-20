@@ -4,6 +4,9 @@ import Testimonial from "../components/Testimonial";
 import ImageGallery from "../components/ImageGallery";
 import FAQSection from "../components/Faqs";
 
+
+
+
 const EventPage = () => {
   return (
     <div>
@@ -111,7 +114,7 @@ const EventPage = () => {
                   <li key={idx}>{f}</li>
                 ))}
               </ul>
-              <button className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full transition font-semibold">
+              <button className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full transition font-semibold cursor-pointer">
                 Book Now
               </button>
             </div>

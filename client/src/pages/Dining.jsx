@@ -137,9 +137,7 @@ const Dining = () => {
               <p className="text-gray-600 mt-1">{item.desc}</p>
               <div className="flex justify-between items-center mt-5">
                 <span className="text-lg font-semibold">{item.price}</span>
-                <button className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-xl text-sm hover:opacity-90 transition">
-                  Order
-                </button>
+            
               </div>
             </div>
           </div>

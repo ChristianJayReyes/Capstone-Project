@@ -5,12 +5,12 @@ import { Outlet } from 'react-router-dom'
 import { useAppContext } from '../../context/appContext'
 
 const Layout = () => {
-  const {isOwner, navigate} = useAppContext()
-  useEffect(() => {
-    if (!isOwner) {
-      navigate('/')
-    };
-  }, [isOwner])
+  // const {isOwner, navigate} = useAppContext()
+  // useEffect(() => {
+  //   if (!isOwner) {
+  //     navigate('/')
+  //   };
+  // }, [isOwner])
   return (
     <div className='flex flex-col h-screen'>
         <NavBar />

@@ -5,13 +5,28 @@ const About = () => {
   const team = [
     {
       name: "Juan Dela Cruz",
-      role: "Resort Owner",
+      role: "General Manager",
       img: "https://source.unsplash.com/400x400/?businessman,portrait",
     },
     {
       name: "Maria Santos",
-      role: "Front Desk Manager",
+      role: "Front Desk Staffs",
       img: "https://source.unsplash.com/400x400/?woman,portrait",
+    },
+    {
+      name: "Carlos Reyes",
+      role: "Head Chef",
+      img: "https://source.unsplash.com/400x400/?chef,portrait",
+    },
+    {
+      name: "Carlos Reyes",
+      role: "Head Chef",
+      img: "https://source.unsplash.com/400x400/?chef,portrait",
+    },
+    {
+      name: "Carlos Reyes",
+      role: "Head Chef",
+      img: "https://source.unsplash.com/400x400/?chef,portrait",
     },
     {
       name: "Carlos Reyes",
@@ -48,11 +63,7 @@ const About = () => {
             🏝 Our Story
           </h2>
           <p className="text-lg leading-relaxed text-gray-700 max-w-4xl mx-auto">
-            Since 1995, our resort has been a sanctuary for travelers seeking both
-            peace and adventure by the sea. From humble beginnings as a small
-            family-run inn, we have transformed into one of the region’s most
-            celebrated destinations — blending world-class amenities with the warmth
-            of Filipino hospitality.
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolor exercitationem atque ratione illum, in nulla suscipit deserunt, esse quibusdam cum, reprehenderit iusto voluptates facilis voluptatem earum nihil sapiente laboriosam. Quas.
           </p>
         </div>
       </div>

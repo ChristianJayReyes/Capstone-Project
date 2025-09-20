@@ -46,6 +46,8 @@ import PresidentialSuite from "./PresidentialSuite.jpg";
 import PS_SingleBed from "./PS_SingleBed.jpg";
 import DoubleBed from "./DoubleBed.jpg";
 import carbonara from "./carbonara.jpg";
+import eyeClosed from "./eyeClosed.png";
+import eyeOpen from "./eyeOpen.png";
 
 
 export const assets = {
@@ -91,6 +93,8 @@ export const assets = {
     PS_SingleBed,
     DoubleBed,
     carbonara,
+    eyeClosed,
+    eyeOpen,
 }
 
 export const cities = [

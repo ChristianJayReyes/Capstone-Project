@@ -114,11 +114,11 @@ export const AppProvider = ({ children }) => {
     setShowHotelReg,
     searchedCities,
     setSearchedCities,
-    loginUser, // ✅ new
-    logoutUser, // ✅ new
+    loginUser,
+    logoutUser, 
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (<AppContext.Provider value={value}>{children}</AppContext.Provider>)
 };
 
 export const useAppContext = () => useContext(AppContext);

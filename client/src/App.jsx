@@ -18,7 +18,8 @@ import {Toaster} from 'react-hot-toast'
 import HotelReg from './components/HotelReg'
 import { useAppContext } from './context/AppContext'
 import LoginForm from './pages/LoginForm'
-
+import KTV from './pages/KTV'
+import FaqButton from './components/FaqButton'
 
 const App = () => {
   
@@ -30,7 +31,7 @@ const App = () => {
     <div>
       <Toaster />
       {!isOwnerPath && <Navbar />}
-      {showHotelReg && <HotelReg />}
+      {showHotelReg && <HotelReg />} 
     <div className='min-h-[70vh]'>
       <Routes>
         <Route path='/' element={<Home/>} />
@@ -38,6 +39,7 @@ const App = () => {
         <Route path='/events' element={<Events />} />
         <Route path='/dining' element={<Dining/>}/>
         <Route path='/about' element={<About/>}/>
+        <Route path='/ktv' element={<KTV/>}/>
         <Route path='/login' element={<LoginForm />} />
 
         <Route path='/rooms/:id' element={<RoomDetails/>} />
@@ -52,6 +54,7 @@ const App = () => {
       </Routes>
     </div>
     <Footer />
+    <FaqButton />
     </div>
   )
 }

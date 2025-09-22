@@ -131,8 +131,6 @@ const EventPage = () => {
 
       <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
 
-      {/* FAQS */}
-      <FAQSection />
     </div>
   );
 };

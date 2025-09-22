@@ -48,6 +48,8 @@ import DoubleBed from "./DoubleBed.jpg";
 import carbonara from "./carbonara.jpg";
 import eyeClosed from "./eyeClosed.png";
 import eyeOpen from "./eyeOpen.png";
+import mailIcon from "./mailIcon.png";
+import faqsIcon from "./faqsIcon.png";
 
 
 export const assets = {
@@ -95,6 +97,8 @@ export const assets = {
     carbonara,
     eyeClosed,
     eyeOpen,
+    mailIcon,
+    faqsIcon,
 }
 
 export const cities = [

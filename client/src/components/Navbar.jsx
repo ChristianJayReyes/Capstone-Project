@@ -12,6 +12,7 @@ const Navbar = () => {
     { name: "About", path: "/about" },
     { name: "Dining", path: "/dining" },
     { name: "Events", path: "/events" },
+    { name: "KTV", path: "/ktv" },
   ];
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -131,7 +132,7 @@ const Navbar = () => {
           {currentUser ? (
             <div className="relative">
               <img
-                src={currentUser.photo || "https://i.pravatar.cc/40"} // ✅ now uses "photo"
+                src={currentUser.photo || "https://i.pravatar.cc/40"} 
                 alt="user avatar"
                 className="h-15 w-15 rounded-full object-cover cursor-pointer border"
                 onClick={() => setProfileMenuOpen((prev) => !prev)}

@@ -1,5 +1,6 @@
 import React from "react";
 import { useState } from "react";
+import { assets } from "../assets/assets";
 
 const About = () => {
   const team = [
@@ -123,8 +124,8 @@ const About = () => {
 
           {/* CTA */}
           <div className="mt-12">
-            <button className="px-8 py-4 bg-white text-indigo-700 font-semibold rounded-full shadow-lg hover:bg-indigo-100 transition transform hover:scale-110">
-              Send Us a Message
+            <button className="px-8 py-4 bg-white text-indigo-700 font-semibold rounded-full shadow-lg hover:bg-indigo-100 transition transform hover:scale-110" onClick={() => (window.location.href = "mailto:sales.rosarioresort@gmail.com")}>
+              Send Us a Message <span><img src={assets.mailIcon} alt="mail-icon" className="inline-block w-5 h-5 ml-2" /></span>
             </button>
           </div>
         </div>

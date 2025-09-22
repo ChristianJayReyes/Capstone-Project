@@ -23,50 +23,58 @@ const faqs = [
   },
 ];
 
-const FAQSection = () => {
-  const [activeIndex, setActiveIndex] = useState(null);
+const FAQChat = ({ onClose }) => {
+  const [messages, setMessages] = useState([
+    { from: "bot", text: "Hi! 👋 I’m your FAQ assistant. Pick a question below:" },
+  ]);
 
-  const toggleFAQ = (index) => {
-    setActiveIndex(activeIndex === index ? null : index);
+  const handleQuestionClick = (faq) => {
+    // Add user question
+    const userMsg = { from: "user", text: faq.question };
+    // Add bot answer
+    const botMsg = { from: "bot", text: faq.answer };
+
+    setMessages((prev) => [...prev, userMsg, botMsg]);
   };
 
   return (
-    <section className="faqs container mx-auto py-20 px-4">
-      <h2 className="text-4xl font-bold text-center mb-12 text-gray-800">Frequently Asked Questions</h2>
-      <div className="space-y-6 max-w-3xl mx-auto">
-        {faqs.map((faq, index) => (
+    <div className="fixed bottom-20 right-6 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col">
+      {/* Header */}
+      <div className="flex justify-between items-center p-3 bg-blue-600 text-white rounded-t-2xl">
+        <h3 className="font-semibold">FAQs Assistant</h3>
+        <button onClick={onClose}>✖</button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 p-3 overflow-y-auto space-y-2 text-sm">
+        {messages.map((msg, idx) => (
           <div
-            key={index}
-            className="bg-white/80 backdrop-blur-md border border-gray-200 rounded-xl p-6 shadow-md transition-all"
+            key={idx}
+            className={`p-2 rounded-lg max-w-[75%] ${
+              msg.from === "user"
+                ? "bg-blue-500 text-white ml-auto"
+                : "bg-gray-100 text-gray-800"
+            }`}
           >
-            <button
-              className="flex justify-between items-center w-full text-left font-semibold text-lg text-gray-800"
-              onClick={() => toggleFAQ(index)}
-            >
-              <span>{faq.question}</span>
-              <svg
-                className={`w-5 h-5 transform transition-transform duration-300 ${
-                  activeIndex === index ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <div
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                activeIndex === index ? "max-h-40 mt-4 opacity-100" : "max-h-0 opacity-0"
-              }`}
-            >
-              <p className="text-gray-600">{faq.answer}</p>
-            </div>
+            {msg.text}
           </div>
         ))}
       </div>
-    </section>
+
+      {/* FAQ choices always visible */}
+      <div className="border-t border-gray-200 p-2 space-y-2 max-h-40 overflow-y-auto">
+        {faqs.map((faq, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleQuestionClick(faq)}
+            className="w-full text-left px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-blue-50 text-gray-700 text-sm transition"
+          >
+            {faq.question}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 };
 
-export default FAQSection;
+export default FAQChat;

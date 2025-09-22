@@ -76,7 +76,7 @@ const Dining = () => {
       {/* Hero Section */}
       <div
         className="relative h-[500px] bg-cover bg-center"
-        style={{ backgroundImage: `url(${HeroImage})` }}
+        style={{ backgroundImage: assets.poolIcon }}
       >
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-center text-white">
           <h1 className="text-6xl font-extrabold tracking-wide drop-shadow-lg animate-fade-in">

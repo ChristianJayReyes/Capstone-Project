@@ -1,42 +1,9 @@
-// server.js
-import express from "express";
-import "dotenv/config";
-import cors from "cors";
-import session from "express-session";
+// server/configs/passport.js
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import connectDB from "./db.js";
 import jwt from "jsonwebtoken";
 
-import connectDB from "./configs/db.js";
-import connectCloudinary from "./configs/cloudinary.js";
-
-import authRouter from "./routes/authRoutes.js";
-import userRouter from "./routes/userRoutes.js";
-import hotelRouter from "./routes/hotelRoutes.js";
-import roomRouter from "./routes/roomRoutes.js";
-import bookingRouter from "./routes/bookingRoutes.js";
-
-// 🔹 Initialize DB + Cloudinary
-connectDB();
-connectCloudinary();
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-// 🔹 Session middleware (required for Passport)
-app.use(
-  session({
-    secret: "secretkey",
-    resave: false,
-    saveUninitialized: true,
-  })
-);
-
-app.use(passport.initialize());
-app.use(passport.session());
-
-// 🔹 Configure Google OAuth Strategy
 passport.use(
   new GoogleStrategy(
     {
@@ -55,11 +22,20 @@ passport.use(
 
         let user;
         if (rows.length > 0) {
-          user = rows[0];
+          // update photo every login (keeps in sync with Gmail)
+          await db.query("UPDATE users SET photo = ? WHERE user_id = ?", [
+            profile.photos[0].value,
+            rows[0].user_id,
+          ]);
+          const [updatedUser] = await db.query(
+            "SELECT * FROM users WHERE user_id = ?",
+            [rows[0].user_id]
+          );
+          user = updatedUser[0];
         } else {
-          // insert new Google user
+          // ✅ insert new Google user
           const [result] = await db.query(
-            "INSERT INTO users (full_name, email, profile_pic) VALUES (?, ?, ?)",
+            "INSERT INTO users (full_name, email, photo) VALUES (?, ?, ?)",
             [
               profile.displayName,
               profile.emails[0].value,
@@ -73,7 +49,28 @@ passport.use(
           user = newUser[0];
         }
 
-        return done(null, user);
+        // ✅ Generate Access Token (short-lived)
+        const appAccessToken = jwt.sign(
+          { userId: user.user_id },
+          process.env.JWT_SECRET,
+          { expiresIn: "15m" } // 15 minutes
+        );
+
+        // ✅ Generate Refresh Token (long-lived)
+        const appRefreshToken = jwt.sign(
+          { userId: user.user_id },
+          process.env.JWT_REFRESH_SECRET, // use a separate secret
+          { expiresIn: "30d" } // 30 days
+        );
+
+        // ✅ Store refresh token in DB
+        await db.query("UPDATE users SET refresh_token = ? WHERE user_id = ?", [
+          appRefreshToken,
+          user.user_id,
+        ]);
+
+        // return user with both tokens
+        return done(null, { ...user, accessToken: appAccessToken, refreshToken: appRefreshToken });
       } catch (err) {
         return done(err, null);
       }
@@ -81,6 +78,7 @@ passport.use(
   )
 );
 
+// required for sessions (can be skipped if JWT-only)
 passport.serializeUser((user, done) => {
   done(null, user.user_id);
 });
@@ -97,16 +95,4 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// 🔹 Routes
-app.use("/api/auth", authRouter);
-app.use("/api/user", userRouter);
-app.use("/api/hotel", hotelRouter);
-app.use("/api/rooms", roomRouter);
-app.use("/api/bookings", bookingRouter);
-
-// Test route
-app.get("/", (req, res) => res.send("API is working fine"));
-
-// 🔹 Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+export default passport;

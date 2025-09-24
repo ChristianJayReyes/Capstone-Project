@@ -13,13 +13,20 @@
   "description": "",
   "dependencies": {
     "@clerk/express": "^1.7.3",
+    "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.17.0",
     "mongoose": "^8.17.0",
     "multer": "^2.0.1",
+    "mysql2": "^3.14.5",
+    "nodemailer": "^7.0.6",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "svix": "^1.70.0"
   },
   "devDependencies": {

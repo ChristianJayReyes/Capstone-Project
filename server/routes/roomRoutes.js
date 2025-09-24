@@ -4,10 +4,8 @@ import { protect } from "../middleware/authMiddleware.js";
 import { createRoom, getOwnerRooms, getRooms, toggleRoomAvailability } from "../controllers/roomController.js";
 
 const roomRouter = express.Router();
-
-roomRouter.post('/', upload.array("images", 4), protect, createRoom);
-roomRouter.get('/', getRooms);
-roomRouter.get('/owner', protect, getOwnerRooms);
-roomRouter.post('/toggle-availability', protect, toggleRoomAvailability);
+roomRouter.route("/").post(protect, upload.array("images",4), createRoom).get(getRooms);
+roomRouter.route("/owner").get(protect, getOwnerRooms);
+roomRouter.route("/:id/availability").patch(protect,toggleRoomAvailability);
 
 export default roomRouter;

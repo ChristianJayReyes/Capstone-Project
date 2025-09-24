@@ -2,11 +2,11 @@
 export const getUserData = async (req, res) => {
     try {
         const role = req.user.role;
-        const recentSearchedRooms = req.user.recentSearchedRooms;
+        const recentSearchedCities = req.user.recentSearchedCities;
         res.json({
             success: true,
             role,
-            recentSearchedRooms
+            recentSearchedCities
         })
     } catch (error) {
         res.json({
@@ -17,22 +17,22 @@ export const getUserData = async (req, res) => {
     }
 }
 
-
-export const storeRecentSearchedRooms = async (req, res) => {
+//Recent Searched Cities
+export const storeRecentSearchedCities = async (req, res) => {
     try {
-        const {recentSearchedRoom}= req.body;
+        const {recentSearchedCity}= req.body;
         const user = await req.user;
 
-        if (user.recentSearchedRooms.length < 3){
-            user.recentSearchedRooms.push(recentSearchedRoom)
+        if (user.recentSearchedCities.length < 3){
+            user.recentSearchedCities.push(recentSearchedCity)
         }else {
-            user.recentSearchedRooms.shift();
-            user.recentSearchedRooms.push(recentSearchedRoom)
+            user.recentSearchedCities.shift();
+            user.recentSearchedCities.push(recentSearchedCity)
         }
         await user.save();
         res.json({
             success: true,
-            message: "Room added"
+            message: "City added"
         })
     } catch (error) {
         res.json({

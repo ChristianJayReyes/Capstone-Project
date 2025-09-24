@@ -1,5 +1,6 @@
 import Hotel from "../models/Hotel.js";
 import { v2 as cloudinary } from "cloudinary";
+import Room from "../models/Room.js";
 
 //Api to create new room for the hotel
 export const createRoom = async (req, res) => {
@@ -18,14 +19,14 @@ export const createRoom = async (req, res) => {
             return response.secure_url;
         })
 
-        const images =await Promise.all(uploadImages)
+        const images = await Promise.all(uploadImages)
 
         await Room.create({
             hotel: hotel._id,
             roomType,
             pricePerNight: +pricePerNight,
             amenities: JSON.parse(amenities),
-            images
+            images,
         })
         res.json({
             success:true,

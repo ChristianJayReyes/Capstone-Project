@@ -84,8 +84,6 @@ export const createBooking = async (req, res) => {
       success: true,
       message: "Booking created successfully",
     });
-
-    //Create booking
   } catch (error) {
     res.json({
       success: false,
@@ -138,9 +136,9 @@ export const getHotelBookings = async (req, res) => {
       dashboardData: { totalBookings, totalRevenue },
     });
   } catch (error) {
-    res.json ({
-        success: false,
-        message: error.message
-    })
+    res.json({
+      success: false,
+      message: error.message,
+    });
   }
 };

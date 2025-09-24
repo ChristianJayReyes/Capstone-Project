@@ -1,24 +1,22 @@
-import mongoose from "mongoose";
-import "dotenv/config";
+// configs/db.js
+import mysql from "mysql2/promise";
+
+let pool;
 
 const connectDB = async () => {
-  try {
-    mongoose.connection.on("connected", () =>
-      console.log("Database Connected")
-    );
-
-    const db = mongoose.connection;
-    db.on("error", (err)=> {
-      console.error("Database connection error:", err);
+  if (!pool) {
+    pool = mysql.createPool({
+      host: "mysql-rosarioresortshotel.alwaysdata.net",   // e.g. localhost
+      user: "423538",   // e.g. root
+      password: "rosarioresorts",
+      database: "rosarioresortshotel_db",
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
     });
-    db.on("connected", () => {
-      console.log(`Connected to DB: ${db.name}`);
-    });
-
-    await mongoose.connect(`${process.env.MONGODB_URI}/hotel-booking`);
-  } catch (error) {
-    console.log(error.message);
+    console.log("✅ MySQL connected");
   }
+  return pool;
 };
 
 export default connectDB;

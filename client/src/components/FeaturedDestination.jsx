@@ -16,8 +16,8 @@ const FeaturedDestination = () => {
                 <HotelCard key={room._id} room={room} index={index}/>
             ))}
         </div>
-      <button onClick={()=>{navigate('/rooms'); scrollTo(0,0)}}
-        className='my-16 px-4 py-2 text-sm font-medium border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-all cursor-pointer'>
+      <button onClick={()=>{navigate('/accommodation'); scrollTo(0,0)}}
+        className='my-16 px-4 py-2 text-sm font-medium border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-all cursor-pointer animate-bounce'>
         View All Rooms
       </button>
     </div>

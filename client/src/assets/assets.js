@@ -50,6 +50,73 @@ import eyeClosed from "./eyeClosed.png";
 import eyeOpen from "./eyeOpen.png";
 import mailIcon from "./mailIcon.png";
 import faqsIcon from "./faqsIcon.png";
+import fb from "./fb.png";
+import poolers from "./poolers.jpg";
+import hotelLogo from "./hotelLogo.png";
+import dq1 from "./delux_queen/dq1.jpg";
+import dq2 from "./delux_queen/dq2.jpg";
+import dq3 from "./delux_queen/dq3.jpg";
+import dq4 from "./delux_queen/dq4.jpg";
+import dw1 from "./delux_twin/dw1.jpg";
+import dw2 from "./delux_twin/dw2.jpg";
+import dw3 from "./delux_twin/dw3.jpg";
+import dw4 from "./delux_twin/dw4.jpg";
+import dr1 from "./dormitory_room/dr1.jpg";
+import dr2 from "./dormitory_room/dr2.jpg";
+import dr3 from "./dormitory_room/dr3.jpg";
+import dr4 from "./dormitory_room/dr4.jpg";
+import fr1 from "./family_room/fr1.jpg";
+import fr2 from "./family_room/fr2.jpg";
+import fr3 from "./family_room/fr3.jpg";
+import fr4 from "./family_room/fr4.jpg";
+import pq1 from "./presidential_queen/pq1.jpg";
+import pq2 from "./presidential_queen/pq2.jpg";
+import pq3 from "./presidential_queen/pq3.jpg";
+import pq4 from "./presidential_queen/pq4.jpg";
+import pt1 from "./presidential_twin/pt1.jpg";
+import pt2 from "./presidential_twin/pt2.jpg";
+import pt3 from "./presidential_twin/pt3.jpg";
+import pt4 from "./presidential_twin/pt4.jpg";
+import sq1 from "./superior_queen/sq1.jpg";
+import sq2 from "./superior_queen/sq2.jpg";
+import sq3 from "./superior_queen/sq3.jpg";
+import sq4 from "./superior_queen/sq4.jpg";
+import st1 from "./superior_twin/st1.jpg";
+import st2 from "./superior_twin/st2.jpg";
+import st3 from "./superior_twin/st3.jpg";
+import st4 from "./superior_twin/st4.jpg";
+import f1 from "./foods/f1.jpg";
+import f2 from "./foods/f2.jpeg";
+import f3 from "./foods/f3.jpg";
+import f4 from "./foods/f4.jpeg";
+import f5 from "./foods/f5.jpeg";
+import f6 from "./foods/f6.jpeg";
+import f7 from "./foods/f7.jpeg";
+import f8 from "./foods/f8.jpeg";
+import f9 from "./foods/f9.jpeg";
+import f10 from "./foods/f10.jpeg";
+import f11 from "./foods/f11.jpeg";
+import f12 from "./foods/f12.jpeg";
+import f13 from "./foods/f13.jpeg";
+import f14 from "./foods/f14.jpeg";
+import f15 from "./foods/f15.jpeg";
+import bday1 from "./birthday/bday1.png";
+import bday2 from "./birthday/bday2.jpg";
+import bday3 from "./birthday/bday3.jpg";
+import bday4 from "./birthday/bday4.jpg";
+import wed1 from "./wedding/wed1.png";
+import wed2 from "./wedding/wed2.jpg";
+import wed3 from "./wedding/wed3.png";
+import wed4 from "./wedding/wed4.jpg";
+import binyag1 from "./christening/binyag1.jpg";
+import binyag2 from "./christening/binyag2.jpg";
+import binyag3 from "./christening/binyag3.jpeg";
+import binyag4 from "./christening/binyag4.jpeg";
+import dining_background from "./dining_background.jpg";
+import pavillion from "./pavillion.jpg";
+
+
+
 
 
 export const assets = {
@@ -99,13 +166,83 @@ export const assets = {
     eyeOpen,
     mailIcon,
     faqsIcon,
+    fb,
+    poolers,
+    hotelLogo,
+    dq1,
+    dq2,
+    dq3,
+    dq4,
+    dw1,
+    dw2,
+    dw3,
+    dw4,
+    dr1,
+    dr2,
+    dr3,
+    dr4,
+    fr1,
+    fr2,
+    fr3,
+    fr4,
+    pq1,
+    pq2,
+    pq3,
+    pq4,
+    pt1,
+    pt2,
+    pt3,
+    pt4,
+    sq1,
+    sq2,
+    sq3,
+    sq4,
+    st1,
+    st2,
+    st3,
+    st4,
+    f1,
+    f2,
+    f3,
+    f4,
+    f5,
+    f6,
+    f7,
+    f8,
+    f9,
+    f10,
+    f11,
+    f12,
+    f13,
+    f14,
+    f15,
+    bday1,
+    bday2,
+    bday3,
+    bday4,
+    wed1,
+    wed2,
+    wed3,
+    wed4,
+    binyag1,
+    binyag2,
+    binyag3,
+    binyag4,
+    dining_background,
+    pavillion,
+
+
 }
 
 export const cities = [
-    "Presidential Suite (Double Bed)",
-    "Single Bed",
-    "Double Bed",
-    "King Size",
+     "Dormitory Room", 
+     "Superior Queen", 
+     "Superior Twin", 
+     "Deluxe Queen", 
+     "Deluxe Twin", 
+     "Presidential Queen",
+     "Presidential Twin",
+     "Family Room",
 ];
 
 export const eventImages = {
@@ -162,7 +299,7 @@ export const userDummyData = {
 // Hotel Dummy Data
 export const hotelDummyData = {
     "_id": "67f76393197ac559e4089b72",
-    "name": "Urbanza Suites",
+    "name": "Presidential Suites",
     "address": "Brgy. Quilib, Rosario, Batangas",
     "contact": "+0123456789",
     "owner": userDummyData,
@@ -174,53 +311,101 @@ export const hotelDummyData = {
 // Rooms Dummy Data
 export const roomsDummyData = [
     {
-        "_id": "67f7647c197ac559e4089b96",
+        "_id": "01",
         "hotel": hotelDummyData,
         "roomType": "Single Bed",
         "pricePerNight": 3000,
         "amenities": ["Room Service", "Free WiFi", "Pool Access"],
-        "images": [PS_SingleBed, PS_SingleBed, PresidentialSuite, roomImg4],
+        "images": [dq1, dq2, dq3, dq4],
         "isAvailable": false,
         "createdAt": "2025-04-10T06:26:04.013Z",
         "updatedAt": "2025-04-10T06:26:04.013Z",
         "__v": 0
     },
     {
-        "_id": "67f76452197ac559e4089b8e",
+        "_id": "02",
         "hotel": hotelDummyData,
         "roomType": "Double Bed",
         "pricePerNight": 3500,
         "amenities": ["Free WiFi", "Room Service", "Pool Access"],
-        "images": [roomImg2, roomImg3, roomImg4, roomImg1],
+        "images": [dw1, dw3],
         "isAvailable": true,
         "createdAt": "2025-04-10T06:25:22.593Z",
         "updatedAt": "2025-04-10T06:25:22.593Z",
         "__v": 0
     },
     {
-        "_id": "67f76406197ac559e4089b82",
+        "_id": "03",
         "hotel": hotelDummyData,
         "roomType": "Family Room",
         "pricePerNight": 4000,
         "amenities": ["Free WiFi", "Free Breakfast", "Room Service"],
-        "images": [roomImg3, roomImg4, roomImg1, roomImg2],
+        "images": [dr2, dr3, dr4],
         "isAvailable": true,
         "createdAt": "2025-04-10T06:24:06.285Z",
         "updatedAt": "2025-04-10T06:24:06.285Z",
         "__v": 0
     },
     {
-        "_id": "67f763d8197ac559e4089b7a",
+        "_id": "04",
         "hotel": hotelDummyData,
         "roomType": "Luxury Room",
         "pricePerNight": 4500,
         "amenities": ["Free WiFi", "Room Service", "Pool Access"],
-        "images": [roomImg4, roomImg1, roomImg2, roomImg3],
+        "images": [fr1, fr3, fr4],
         "isAvailable": true,
         "createdAt": "2025-04-10T06:23:20.252Z",
         "updatedAt": "2025-04-10T06:23:20.252Z",
         "__v": 0
-    }
+    },
+    {
+        "_id": "05",
+        "hotel": hotelDummyData,
+        "roomType": "Luxury Room",
+        "pricePerNight": 4500,
+        "amenities": ["Free WiFi", "Room Service", "Pool Access"],
+        "images": [ pq3, pq4, pq1, pq2],
+        "isAvailable": true,
+        "createdAt": "2025-04-10T06:23:20.252Z",
+        "updatedAt": "2025-04-10T06:23:20.252Z",
+        "__v": 0
+    },
+    {
+        "_id": "06",
+        "hotel": hotelDummyData,
+        "roomType": "Luxury Room",
+        "pricePerNight": 4500,
+        "amenities": ["Free WiFi", "Room Service", "Pool Access"],
+        "images": [pt1, pt3, pt4],
+        "isAvailable": true,
+        "createdAt": "2025-04-10T06:23:20.252Z",
+        "updatedAt": "2025-04-10T06:23:20.252Z",
+        "__v": 0
+    },
+    {
+        "_id": "07",
+        "hotel": hotelDummyData,
+        "roomType": "Luxury Room",
+        "pricePerNight": 4500,
+        "amenities": ["Free WiFi", "Room Service", "Pool Access"],
+        "images": [sq2, sq3, sq4],
+        "isAvailable": true,
+        "createdAt": "2025-04-10T06:23:20.252Z",
+        "updatedAt": "2025-04-10T06:23:20.252Z",
+        "__v": 0
+    },
+    {
+        "_id": "08",
+        "hotel": hotelDummyData,
+        "roomType": "Luxury Room",
+        "pricePerNight": 4500,
+        "amenities": ["Free WiFi", "Room Service", "Pool Access"],
+        "images": [st1, st2, st3, st4],
+        "isAvailable": true,
+        "createdAt": "2025-04-10T06:23:20.252Z",
+        "updatedAt": "2025-04-10T06:23:20.252Z",
+        "__v": 0
+    },
 ]
 
 

@@ -7,7 +7,7 @@ import { toast } from "react-hot-toast";
 import axios from "axios";
 
 const AddRoom = () => {
-  const { axios, getToken } = useAppContext();
+  const { axios, token } = useAppContext();
   const [images, setImages] = useState({
     1: null,
     2: null,
@@ -33,9 +33,9 @@ const AddRoom = () => {
     // To check if all inputs are filled
     if (
       !inputs.roomType ||
-      inputs.pricePerNight ||
+      !inputs.pricePerNight ||
       !inputs.amenities ||
-      !Object.values(images).some((image) => image)
+      !Object.values(images).some(image => image)
     ) {
       toast.error("Please fill in all fields and upload images.");
       return;
@@ -44,10 +44,10 @@ const AddRoom = () => {
     try {
       const formData = new FormData();
       formData.append("roomType", inputs.roomType);
-      formData.append("pricePerNight", inputs.roompricePerNightType);
+      formData.append("pricePerNight", inputs.pricePerNight);
       //Converting Amenities to Array & keeping only enabled Amenities
       const amenities = Object.keys(inputs.amenities).filter(
-        (key) => inputs.amenities[key]
+        key => inputs.amenities[key]
       );
       formData.append("amenities", JSON.stringify(amenities));
 
@@ -57,7 +57,7 @@ const AddRoom = () => {
       });
 
       const { data } = await axios.post("/api/rooms/", formData, {
-        headers: { Authorization: `Bearer ${await getToken}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) {
         toast.success(data.message);
@@ -76,7 +76,7 @@ const AddRoom = () => {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error("An error occurred while adding the room.");
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -186,9 +186,9 @@ const AddRoom = () => {
       <div className="text-center mt-10">
         <button
           type="submit"
-          className="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-3 rounded-lg shadow-lg font-semibold"
+          className="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-3 rounded-lg shadow-lg font-semibold cursor-pointer" disabled={loading}
         >
-          Add Room
+          {loading ? "Adding Room..." : "Add Room"}
         </button>
       </div>
     </form>

@@ -1,4 +1,8 @@
 import React, { useRef, useEffect, useState } from "react";
+import bday1 from "../assets/birthday/bday1.png";
+import bday2 from "../assets/birthday/bday2.jpg";
+import bday3 from "../assets/birthday/bday3.jpg";
+import bday4 from "../assets/birthday/bday4.jpg";
 
 const ImageSlider = () => {
   const sliderRef = useRef(null);
@@ -19,7 +23,7 @@ const ImageSlider = () => {
       setCurrentSlide((prev) => (prev + 1) % totalSlides);
     }, 3000);
 
-    return () => clearInterval(interval); // Clean up interval on unmount
+    return () => clearInterval(interval); 
   }, []);
 
   useEffect(() => {
@@ -30,26 +34,26 @@ const ImageSlider = () => {
     <div className="flex flex-col items-center">
       <div className="w-full max-w-6xl overflow-hidden relative">
         <div
-          className="flex transition-transform duration-500 ease-in-out"
+          className="flex transition-transform duration-500 ease-in-out h-150 rounded-md"
           ref={sliderRef}
         >
           <img
-            src="https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/gallery/slide1.png"
+            src={bday1}
             className="w-full flex-shrink-0"
             alt="Slide 1"
           />
           <img
-            src="https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/gallery/slide2.png"
+            src={bday2}
             className="w-full flex-shrink-0"
             alt="Slide 2"
           />
           <img
-            src="https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/gallery/slide3.png"
+            src={bday3}
             className="w-full flex-shrink-0"
             alt="Slide 3"
           />
           <img
-            src="https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/gallery/slide4.png"
+            src={bday4}
             className="w-full flex-shrink-0"
             alt="Slide 4"
           />

@@ -7,12 +7,11 @@ import LoginForm from "../pages/LoginForm";
 const Navbar = () => {
   const navLinks = [
     { name: "Home", path: "/" },
-    { name: "Rooms", path: "rooms" },
-    { name: "Experience", path: "/" },
+    { name: "Accommodation", path: "/accommodation" },
     { name: "About", path: "/about" },
     { name: "Dining", path: "/dining" },
     { name: "Events", path: "/events" },
-    { name: "KTV", path: "/ktv" },
+    { name: "Offers", path: "/offers" },
   ];
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -88,9 +87,9 @@ const Navbar = () => {
         {/* Logo */}
         <Link to="/">
           <img
-            src={assets.logoPicture}
+            src={assets.hotelLogo}
             alt="logo"
-            className={`h-15 ${isScrolled && "invert opacity-80"}`}
+            className={`h-15 w-50 ${isScrolled && "invert opacity-80"}`}
           />
         </Link>
 
@@ -132,7 +131,7 @@ const Navbar = () => {
           {currentUser ? (
             <div className="relative">
               <img
-                src={currentUser.photo || "https://i.pravatar.cc/40"} 
+                src={currentUser.photo || "https://static.vecteezy.com/system/resources/previews/000/550/731/original/user-icon-vector.jpg"} 
                 alt="user avatar"
                 className="h-15 w-15 rounded-full object-cover cursor-pointer border"
                 onClick={() => setProfileMenuOpen((prev) => !prev)}
@@ -147,7 +146,7 @@ const Navbar = () => {
                       <div className="absolute -inset-0.5 rounded-full bg-gradient-to-tr from-yellow-400 to-pink-500 animate-spin-slow"></div>
                       <img
                         src={
-                          currentUser.photo || "https://i.pravatar.cc/100"
+                          currentUser.photo || "https://static.vecteezy.com/system/resources/previews/000/550/731/original/user-icon-vector.jpg"
                         }
                         alt="user avatar"
                         className="relative h-14 w-14 rounded-full object-cover border-2 border-white"

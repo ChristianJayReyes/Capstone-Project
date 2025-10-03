@@ -42,7 +42,7 @@ const FAQChat = ({ onClose }) => {
       {/* Header */}
       <div className="flex justify-between items-center p-3 bg-blue-600 text-white rounded-t-2xl">
         <h3 className="font-semibold">FAQs Assistant</h3>
-        <button onClick={onClose}>✖</button>
+        <button onClick={onClose} className="cursor-pointer">✖</button>
       </div>
 
       {/* Messages */}

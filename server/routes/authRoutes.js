@@ -131,7 +131,7 @@ router.post("/verify-otp", async (req, res) => {
 // Start Google OAuth
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", { scope: ["profile", "email"], state: true })
 );
 
 // Google OAuth callback

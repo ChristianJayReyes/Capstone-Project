@@ -13,6 +13,7 @@ const connectDB = async () => {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      connectTimeout: 10000,
     });
     console.log("✅ MySQL connected");
   }

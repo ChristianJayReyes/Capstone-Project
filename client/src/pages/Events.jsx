@@ -10,6 +10,11 @@ import bday1 from "../assets/birthday/bday1.png";
 import bday2 from "../assets/birthday/bday2.jpg";
 import bday3 from "../assets/birthday/bday3.jpg";
 import bday4 from "../assets/birthday/bday4.jpg";
+import binyag1 from "../assets/christening/binyag1.jpg";
+import binyag2 from "../assets/christening/binyag2.jpg";
+import binyag3 from "../assets/christening/binyag3.jpeg";
+import binyag4 from "../assets/christening/binyag4.jpeg";
+import { motion } from "framer-motion";
 
 const EventPage = () => {
   const [openGallery, setOpenGallery] = useState(false);
@@ -25,23 +30,13 @@ const EventPage = () => {
   ];
 
   const galleryImages = {
-    weddings: [
-      wed1,
-      wed2,
-      wed3,
-      wed4,
-    ],
+    weddings: [wed1, wed2, wed3, wed4],
     graduations: [
       eventImages["graduations"],
       eventImages["graduations"],
       eventImages["graduations"],
     ],
-    birthdays: [
-      bday1,
-      bday2,
-      bday3,
-      bday4,
-    ],
+    birthdays: [bday1, bday2, bday3, bday4],
     anniversaries: [
       eventImages["anniversaries"],
       eventImages["anniversaries"],
@@ -52,14 +47,15 @@ const EventPage = () => {
       eventImages["reunions"],
       eventImages["reunions"],
     ],
-    christenings: [
-      eventImages["christenings"],
-      eventImages["christenings"],
-      eventImages["christenings"],
-    ],
+    christenings: [binyag1, binyag2, binyag3, binyag4],
   };
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1 }}
+      scrollBehavior={"smooth"}
+    >
       {/* HERO SECTION */}
       <section className="hero relative h-screen flex items-center justify-center overflow-hidden">
         {/* Background Image */}
@@ -141,7 +137,7 @@ const EventPage = () => {
                   }}
                   className="mt-5 inline-block bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 text-white font-semibold px-5 py-2.5 rounded-full shadow-lg hover:shadow-blue-500/50 transition-all text-sm"
                 >
-                  Learn More
+                  See More
                 </button>
               </div>
             </div>
@@ -182,16 +178,30 @@ const EventPage = () => {
 
       <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
 
-      {/* GALLERY / CAROUSEL */}
-      <div className="my-20  flex flex-col items-center bg-gray-200 py-10">
-        <h2 className="text-4xl font-bold text-center mb-14 text-gray-800 font-playfair">
-          Event Gallery
+      {/* 🌅 EVENT GALLERY SECTION */}
+      <div className="relative my-24 flex flex-col items-center bg-gradient-to-b from-gray-100 via-white to-gray-100 py-16 px-6 overflow-hidden">
+        {/* Subtle Background Ornaments */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,70,229,0.08),transparent_60%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_60%)] pointer-events-none" />
+
+        {/* Heading */}
+        <h2 className="text-5xl font-extrabold text-center mb-14 text-gray-800 font-playfair tracking-tight relative">
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            Event Gallery
+          </span>
+
         </h2>
-        <ImageGallery />
+
+        {/* Image Gallery Component */}
+        <div className="relative z-10 w-full max-w-6xl">
+          <ImageGallery />
+        </div>
+
+        {/* Subtext or Decorative Line (optional) */}
+        <p className="text-gray-500 text-sm mt-10 tracking-wide uppercase">
+          Capturing the Best Moments at Rosario Resort
+        </p>
       </div>
-
-      <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
-
       {/* EVENT PACKAGES / INCLUSIONS */}
       <section
         className="packages container mx-auto py-20 px-6 bg-gradient-to-b from-gray-50 to-gray-100 relative overflow-hidden rounded-3xl"
@@ -280,7 +290,7 @@ const EventPage = () => {
       </div>
 
       <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
-    </div>
+    </motion.div>
   );
 };
 

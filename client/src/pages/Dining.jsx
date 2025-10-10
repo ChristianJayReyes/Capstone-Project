@@ -17,7 +17,7 @@ import f13 from "../assets/foods/f13.jpeg";
 import f14 from "../assets/foods/f14.jpeg";
 import f15 from "../assets/foods/f15.jpeg";
 import dining_background from "../assets/dining_background.jpg";
-
+import { motion } from "framer-motion";
 
 const Dining = () => {
   const categories = [
@@ -171,7 +171,12 @@ const Dining = () => {
       : menu.filter((item) => item.category === activeCategory);
 
   return (
-    <div className="dining-page font-sans text-gray-900">
+    <motion.div
+      className="dining-page font-sans text-gray-900 scroll-smooth"
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1 }}
+    >
       {/* Hero Section */}
       <div
         className="relative h-[650px] w-full bg-cover bg-center"
@@ -236,24 +241,14 @@ const Dining = () => {
               <p className="text-gray-600 mt-1">{item.desc}</p>
               <div className="flex justify-between items-center mt-5">
                 <span className="text-lg font-semibold">{item.price}</span>
-            
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Reservation CTA */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-700 py-16 text-center text-white">
-        <h2 className="text-4xl font-bold mb-4">🍷 Reserve Your Table</h2>
-        <p className="mb-6 text-lg opacity-90">
-          Book now and indulge in an unforgettable dining journey.
-        </p>
-        <button className="bg-white text-indigo-600 font-semibold px-8 py-3 rounded-full shadow-md hover:bg-gray-100 transition cursor-pointer transition delay-150 duration-300 ease-in-out hover:translate-y-1 hover:scale-110 hover:bg-indigo-500">
-          Book Now
-        </button>
-      </div>
-    </div>
+
+    </motion.div>
   );
 };
 

@@ -59,11 +59,10 @@ passport.use(
         } else {
           // insert new Google user
           const [result] = await db.query(
-            "INSERT INTO users (full_name, email, profile_pic) VALUES (?, ?, ?)",
+            "INSERT INTO users (full_name, email) VALUES (?, ?)",
             [
               profile.displayName,
               profile.emails[0].value,
-              profile.photos[0].value,
             ]
           );
           const [newUser] = await db.query(

@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID, // from Google Cloud Console
+      clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: "http://localhost:3000/api/auth/google/callback",
     },
@@ -33,7 +33,7 @@ passport.use(
           );
           user = updatedUser[0];
         } else {
-          // ✅ insert new Google user
+          //  insert new Google user
           const [result] = await db.query(
             "INSERT INTO users (full_name, email, photo) VALUES (?, ?, ?)",
             [
@@ -49,28 +49,32 @@ passport.use(
           user = newUser[0];
         }
 
-        // ✅ Generate Access Token (short-lived)
+        //  Generate Access Token
         const appAccessToken = jwt.sign(
           { userId: user.user_id },
           process.env.JWT_SECRET,
-          { expiresIn: "15m" } // 15 minutes
+          { expiresIn: "3d" } // 3 days
         );
 
-        // ✅ Generate Refresh Token (long-lived)
+        //  Generate Refresh Token
         const appRefreshToken = jwt.sign(
           { userId: user.user_id },
-          process.env.JWT_REFRESH_SECRET, // use a separate secret
-          { expiresIn: "30d" } // 30 days
+          process.env.JWT_REFRESH_SECRET,
+          { expiresIn: "30d" }
         );
 
-        // ✅ Store refresh token in DB
+        //  Store refresh token in DB
         await db.query("UPDATE users SET refresh_token = ? WHERE user_id = ?", [
           appRefreshToken,
           user.user_id,
         ]);
 
         // return user with both tokens
-        return done(null, { ...user, accessToken: appAccessToken, refreshToken: appRefreshToken });
+        return done(null, {
+          ...user,
+          accessToken: appAccessToken,
+          refreshToken: appRefreshToken,
+        });
       } catch (err) {
         return done(err, null);
       }
@@ -78,7 +82,7 @@ passport.use(
   )
 );
 
-// required for sessions (can be skipped if JWT-only)
+// required for sessions
 passport.serializeUser((user, done) => {
   done(null, user.user_id);
 });

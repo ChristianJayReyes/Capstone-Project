@@ -1,9 +1,26 @@
 import React from "react";
-import { useState } from "react";
+import { motion } from "framer-motion";
 import { assets } from "../assets/assets";
-import heroImage from "../assets/heroImage.png"
+import heroImage from "../assets/heroImage.png";
+import { useAppContext } from "../context/AppContext";
+import { useState } from "react";
+import LoginForm from "./LoginForm";
 
 const About = () => {
+  const { user } = useAppContext();
+  const [showLoginForm, setShowLoginForm] = useState(false);
+
+  const handleClick = () => {
+    if (!user) {
+      alert("Please log in first to send a message.");
+      return;
+    }
+
+    // Once the user is logged in, open Gmail compose
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=nonreplyrosarioresorts@gmail.com&su=Inquiry&body=Hello%20Rosario%20Resort,%0A%0AI%20would%20like%20to%20inquire%20about...`;
+    window.open(gmailUrl, "_blank");
+  };
+
   const team = [
     {
       name: "Juan Dela Cruz",
@@ -12,23 +29,8 @@ const About = () => {
     },
     {
       name: "Maria Santos",
-      role: "Front Desk Staffs",
+      role: "Front Desk Staff",
       img: "https://source.unsplash.com/400x400/?woman,portrait",
-    },
-    {
-      name: "Carlos Reyes",
-      role: "Head Chef",
-      img: "https://source.unsplash.com/400x400/?chef,portrait",
-    },
-    {
-      name: "Carlos Reyes",
-      role: "Head Chef",
-      img: "https://source.unsplash.com/400x400/?chef,portrait",
-    },
-    {
-      name: "Carlos Reyes",
-      role: "Head Chef",
-      img: "https://source.unsplash.com/400x400/?chef,portrait",
     },
     {
       name: "Carlos Reyes",
@@ -38,94 +40,136 @@ const About = () => {
   ];
 
   return (
-    <div className="about-page font-sans text-gray-900">
+    <motion.div
+      className="about-page font-sans text-gray-900"
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1 }}
+    >
       {/* Hero Section */}
       <div
-        className="relative h-[500px] bg-cover bg-center"
-        style={{
-          backgroundImage: `url(${heroImage})`,
-        }}
+        className="relative h-[550px] md:h-[600px] bg-cover bg-center flex items-center justify-center"
+        style={{ backgroundImage: `url(${heroImage})` }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center justify-center text-center text-white px-6">
-          <div className="animate-fade-in">
-            <h1 className="text-6xl font-extrabold tracking-wide drop-shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex items-center justify-center text-center px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2 }}
+          >
+            <h1 className="text-5xl md:text-6xl font-extrabold tracking-wide text-white drop-shadow-lg">
               Welcome to Paradise
             </h1>
-            <p className="mt-4 text-xl opacity-90 max-w-2xl mx-auto">
+            <p className="mt-4 text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
               Experience luxury, comfort, and unforgettable memories at our
               resort.
             </p>
-          </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Resort History */}
-      <div className="bg-gray-400 text-white py-20 px-6">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center">
-          {/* Left Image */}
-          <div>
+      <motion.section
+        className="relative py-24 px-6 overflow-hidden bg-gray-900"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1 }}
+        viewport={{ once: true }}
+      >
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+
+        <div className="relative max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+          {/* Image */}
+          <motion.div
+            className="relative rounded-xl overflow-hidden shadow-2xl"
+            whileHover={{ scale: 1.03 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="absolute -inset-2 bg-gradient-to-tr from-indigo-500 to-pink-500 rounded-xl blur opacity-30"></div>
             <img
               src={assets.pavillion}
               alt="Our Story"
-              className="w-full h-[500px] object-cover rounded-lg shadow-lg"
+              className="relative w-full h-[500px] object-cover rounded-xl"
             />
-          </div>
+          </motion.div>
 
-          {/* Right Text */}
-          <div className="space-y-6">
-            <p className="italic text-white-400">Behind the scene</p>
-            <h2 className="text-5xl font-bold">Our Story</h2>
-            <p className="text-gray-300 leading-relaxed">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-              enim ad minim veniam, quis nostrud exercitation ullamco laboris
-              nisi ut aliquip ex ea commodo consequat.
+          {/* Text */}
+          <div className="backdrop-blur-lg bg-white/10 p-10 rounded-2xl border border-white/20 shadow-xl space-y-6 text-white">
+            <p className="uppercase tracking-widest text-indigo-400 font-semibold">
+              Behind the Scene
             </p>
-            <button className="mt-6 px-6 py-3 border border-white rounded hover:bg-white hover:text-black transition">
-              View More
-            </button>
+            <h2 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+              Our Story
+            </h2>
+            <p className="text-gray-200 leading-relaxed">
+              Nestled in the heart of Rosario, our resort has been a sanctuary
+              of comfort and style since its founding. Combining modern luxury
+              with Filipino hospitality, we’ve created an experience where every
+              guest feels at home — surrounded by beauty, serenity, and joy.
+            </p>
+            <motion.button
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 0 15px rgba(99,102,241,0.5)",
+              }}
+              className="mt-6 px-8 py-3 bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold rounded-full transition-all"
+            >
+              View More →
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.section>
 
       {/* Meet the Team */}
-      <div className="py-20 px-6 bg-white relative">
-        <h2 className="text-5xl font-bold text-center mb-12 text-gray-800">
+      <section className="relative py-24 px-6 bg-gradient-to-b from-indigo-50 via-white to-indigo-100">
+        <h2 className="text-4xl md:text-5xl font-extrabold text-center mb-16 text-gray-800 tracking-tight">
           Meet Our Team
         </h2>
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-12">
+
+        <div className="max-w-6xl mx-auto grid sm:grid-cols-2 md:grid-cols-3 gap-12">
           {team.map((member, idx) => (
-            <div
+            <motion.div
               key={idx}
-              className="group bg-gradient-to-br from-white/70 to-white/30 backdrop-blur-xl border border-white/40 shadow-xl rounded-2xl p-8 text-center transform hover:scale-105 hover:shadow-2xl transition duration-300"
+              className="group relative bg-white/30 backdrop-blur-md border border-white/40 shadow-xl rounded-3xl p-8 text-center transform hover:-translate-y-3 hover:shadow-2xl transition-all duration-500"
+              whileHover={{ scale: 1.03 }}
             >
-              <div className="relative w-40 h-40 mx-auto mb-6">
+              <div className="relative w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-transparent bg-gradient-to-tr from-indigo-500 to-purple-500 p-[2px]">
                 <img
                   src={member.img}
                   alt={member.name}
-                  className="w-full h-full rounded-full object-cover border-4 border-indigo-500 shadow-lg"
+                  className="w-full h-full rounded-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-300 rounded-full flex items-center justify-center">
+                  <p className="text-white text-sm font-semibold tracking-wide">
+                    {member.role}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 group-hover:text-indigo-600 transition">
+              <h3 className="text-2xl font-semibold text-gray-800 group-hover:text-indigo-600 transition duration-300">
                 {member.name}
               </h3>
-              <p className="text-gray-600">{member.role}</p>
-            </div>
+              <p className="mt-2 text-gray-600">{member.role}</p>
+              <div className="mt-4 h-[3px] w-16 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto rounded-full opacity-0 group-hover:opacity-100 transition duration-300" />
+            </motion.div>
           ))}
         </div>
-      </div>
+
+        {/* Decorative circles */}
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-indigo-300/30 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-72 h-72 bg-purple-300/20 rounded-full blur-3xl"></div>
+      </section>
 
       {/* Contact Section */}
-      <div className="relative py-20 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white text-center">
+      <section className="relative py-20 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white text-center overflow-hidden">
         <div className="absolute inset-0 bg-black/30"></div>
-        <div className="relative max-w-5xl mx-auto">
-          <h2 className="text-5xl font-bold mb-8">Let’s Connect</h2>
-          <p className="text-lg mb-12 opacity-90 max-w-3xl mx-auto">
+        <div className="relative max-w-5xl mx-auto space-y-12">
+          <h2 className="text-4xl md:text-5xl font-bold">Let’s Connect</h2>
+          <p className="text-lg md:text-xl opacity-90 max-w-3xl mx-auto">
             Have questions or planning your next stay? Reach out to us — we’re
             here to make your experience seamless and unforgettable.
           </p>
 
-          {/* Glassy Cards */}
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-white/20 backdrop-blur-lg p-6 rounded-xl shadow-lg hover:scale-105 transition">
               <h3 className="text-xl font-semibold mb-2">📧 Email</h3>
@@ -143,16 +187,15 @@ const About = () => {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-1 mt-8 w-full">
+          {/* Social Card */}
+          <div className="grid md:grid-cols-1 mt-8">
             <div className="bg-white/20 backdrop-blur-lg p-6 rounded-xl shadow-lg hover:scale-105 transition">
-              <h3 className="text-xl font-semibold mb-2 ">
-                <span>
-                  <img
-                    src={assets.fb}
-                    alt="fb-icon"
-                    className="inline-block w-5 h-5 mr-2 mb-2"
-                  />
-                </span>
+              <h3 className="text-xl font-semibold mb-2 flex items-center justify-center">
+                <img
+                  src={assets.fb}
+                  alt="fb-icon"
+                  className="inline-block w-5 h-5 mr-2"
+                />
                 Facebook
               </h3>
               <p className="text-lg">Rosario Resort and Hotel</p>
@@ -160,26 +203,33 @@ const About = () => {
           </div>
 
           {/* CTA */}
-          <div className="mt-12">
-            <button
-              className="px-8 py-4 bg-white text-indigo-700 font-semibold rounded-full shadow-lg hover:bg-indigo-100 transition transform hover:scale-110"
-              onClick={() =>
-                (window.location.href = "mailto:sales.rosarioresort@gmail.com")
-              }
-            >
-              Send Us a Message{" "}
-              <span>
-                <img
-                  src={assets.mailIcon}
-                  alt="mail-icon"
-                  className="inline-block w-5 h-5 ml-2"
-                />
-              </span>
-            </button>
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            className="mt-12 px-8 py-4 bg-white text-indigo-700 font-semibold rounded-full shadow-lg hover:bg-indigo-100 transition transform"
+            onClick={handleClick}
+          >
+            Send Us a Message{" "}
+            <img
+              src={assets.mailIcon}
+              alt="mail-icon"
+              className="inline-block w-5 h-5 ml-2"
+            />
+          </motion.button>
+
+          {/* Floating Login Form */}
+          {showLoginForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <LoginForm />
+              {/* Optional: clicking outside the form closes it */}
+              <div
+                className="absolute inset-0"
+                onClick={() => setShowLoginForm(false)}
+              />
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      </section>
+    </motion.div>
   );
 };
 

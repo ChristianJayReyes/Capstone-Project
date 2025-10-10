@@ -11,7 +11,7 @@ const Navbar = () => {
     { name: "About", path: "/about" },
     { name: "Dining", path: "/dining" },
     { name: "Events", path: "/events" },
-    { name: "Offers", path: "/offers" },
+    // { name: "Offers", path: "/offers" },
   ];
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -87,14 +87,14 @@ const Navbar = () => {
         {/* Logo */}
         <Link to="/">
           <img
-            src={assets.hotelLogo}
+            src={assets.RRS}
             alt="logo"
-            className={`h-15 w-50 ${isScrolled && "invert opacity-80"}`}
+            className={`h-15 w-20 ${isScrolled && "invert opacity-80"}`}
           />
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-4 lg:gap-8">
+        <div className="hidden md:flex items-center gap-4 lg:gap-10">
           {navLinks.map((link, i) => (
             <Link
               key={i}

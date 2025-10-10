@@ -1,6 +1,6 @@
-import Hotel from "../models/Hotel.js";
+
 import { v2 as cloudinary } from "cloudinary";
-import Room from "../models/Room.js";
+
 
 //Api to create new room for the hotel
 export const createRoom = async (req, res) => {

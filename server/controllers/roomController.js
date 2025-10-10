@@ -93,3 +93,22 @@ export const toggleRoomAvailability = async (req, res) => {
         });
     }
 }
+
+export const updateRoom = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const { room_number, room_type_id, status } = req.body;
+
+    const room = await Room.findById(roomId);
+    if (!room) return res.json({ success: false, message: "Room not found" });
+
+    if (room_number) room.room_number = room_number;
+    if (room_type_id) room.room_type_id = room_type_id;
+    if (status) room.status = status;
+
+    await room.save();
+    res.json({ success: true, message: "Room updated successfully", room });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};

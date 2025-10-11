@@ -9,7 +9,9 @@ import MyBookings from './pages/MyBookings'
 import Layout from './pages/hotelOwner/Layout'
 import Dashboard from './pages/hotelOwner/Dashboard'
 import AddRoom from './pages/hotelOwner/AddRoom'
-import ListRoom from './pages/hotelOwner/ListRoom'
+import ListRoom from './pages/hotelOwner/AddRoom'
+import Bookings from './pages/hotelOwner/Bookings'
+import BookingLogs from './pages/hotelOwner/Booking_logs'
 import Events from './pages/Events'
 import Dining from './pages/Dining'
 import AddEvent from './pages/hotelOwner/AddEvent'
@@ -18,7 +20,7 @@ import About from './pages/About'
 import {Toaster} from 'react-hot-toast'
 import { useAppContext } from './context/AppContext'
 import HotelReg from './components/HotelReg'
-
+import Guests from './pages/hotelOwner/Guests';
 
 
 
@@ -49,11 +51,14 @@ const App = () => {
             <Route index element={<Dashboard />} />
             <Route path="add-room" element={<AddRoom />} />
             <Route path="list-room" element={<ListRoom />} />
+            <Route path="bookings" element={<Bookings />} />
+            <Route path="booking-logs" element={<BookingLogs />} />
+            <Route path="guest" element={<Guests />} />
             <Route path="add-event" element={<AddEvent />} />
         </Route>
       </Routes>
     </div>
-    <Footer />
+    {!isOwnerPath && <Footer />}
     </div>
   )
 }

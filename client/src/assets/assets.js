@@ -45,6 +45,11 @@ import wedding_event from "./wedding_event.jpg";
 import PresidentialSuite from "./PresidentialSuite.jpg";
 import PS_SingleBed from "./PS_SingleBed.jpg";
 import DoubleBed from "./DoubleBed.jpg";
+import bookinglogsIcon from './bookinglogsIcon.svg'
+import guestIcon from './guestIcon.svg'
+import addroomsIcon from './addroomsIcon.svg'
+
+
 
 
 export const assets = {
@@ -88,7 +93,11 @@ export const assets = {
     PresidentialSuite,
     PS_SingleBed,
     PS_SingleBed,
-    DoubleBed
+    DoubleBed,
+    bookinglogsIcon,
+    guestIcon,
+    addroomsIcon,
+
 }
 
 export const cities = [
@@ -274,6 +283,34 @@ export const dashboardDummyData = {
     "totalRevenue": 897,
     "bookings": userBookingsDummyData
 }
+
+// Guest Dummy Data (with guests)
+export const guestDummyData = { 
+  guests: [
+    {
+      id: 'g001',
+      name: 'Juan Dela Cruz',
+      email: 'juan@example.com',
+      phone: '09123456789',
+      totalBookings: 3,
+      lastBooking: '2025-08-14T00:00:00Z',
+      remarks: 'VIP guest',
+      bookings: [
+        {
+          _id: 'b001',
+          room: { roomType: 'Deluxe' },
+          guests: 2,
+          checkInDate: '2025-08-10',
+          checkOutDate: '2025-08-12',
+          isPaid: true,
+          remarks: 'Prefers high floor'
+        }
+      ]
+    }
+  ]
+};
+
+
 
 // --------- SVG code for Book Icon------
 /* 

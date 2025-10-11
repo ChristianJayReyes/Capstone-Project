@@ -40,7 +40,7 @@ const AllRooms = () => {
   const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
   const [rooms, setRooms] = useState(roomsDummyData);
 
-  const roomTypes = ["Single Bed", "Double Bed", "Luxury Room", "Family Room"];
+  const roomTypes = ["Dormitory Room", "Superior Queen", "Superior Twin", "Deluxe Queen", "Deluxe Twin", "Presidential Queen", " Presidential Twin", "Family Room"];
   const priceRange = [
     "0 to 2999",
     "3000 to 3499",

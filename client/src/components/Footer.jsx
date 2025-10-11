@@ -32,11 +32,11 @@ const Footer = () => {
             <div className="flex items-center gap-3">
               <img
                 className="h-10 drop-shadow-lg"
-                src={assets.logoPicture}
+                src={assets.RRS}
                 alt="Rosario Resort Logo"
               />
               <h2 className="text-2xl font-bold text-white">
-                Rosario Resort & Hotel
+                Rosario Resort and Hotel
               </h2>
             </div>
             <p className="mt-6 text-sm leading-relaxed text-gray-300">

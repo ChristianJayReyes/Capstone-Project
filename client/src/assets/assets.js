@@ -117,6 +117,10 @@ import pavillion from "./pavillion.jpg";
 import sem1 from "./sem1.jpg";
 import oct3 from "./oct3.jpg";
 import RRS from "./RRS.png";
+import htm1 from "./htm1.jpg";
+import htm2 from "./htm2.jpg";
+import htm3 from "./htm3.jpg";
+
 
 export const assets = {
   logo,
@@ -232,6 +236,9 @@ export const assets = {
   sem1,
   oct3,
   RRS,
+  htm1,
+  htm2,
+  htm3,
 };
 
 export const cities = [
@@ -253,21 +260,41 @@ export const eventImages = {
 export const exclusiveOffers = [
   {
     _id: 1,
-    title: "Summer Escape Package",
-    description: "Enjoy a complimentary night and daily breakfast",
-    priceOff: 25,
-    expiryDate: "Aug 31",
-    image: promo3,
+    title: "Halloween Spooktacular",
+    description: "",
+    priceOff: 20,
+    expiryDate: "Oct 31",
+    image: oct3,
+    link: "https://www.facebook.com/photo?fbid=1275392271267572&set=a.578360990970707",
   },
   {
     _id: 2,
-    title: "Romantic Getaway",
-    description: "Special couples package including spa treatment",
+    title: "Teachers Month Special",
+    description: "",
     priceOff: 20,
-    expiryDate: "Sep 20",
-    image: oct3,
+    expiryDate: "Oct 31",
+    image: htm1,
+    link: "https://www.facebook.com/photo/?fbid=1290932139745921&set=pcb.1290932203079248",
   },
-  // { _id: 3, title: "Luxury Retreat", description: "Book 60 days in advance and save on your stay at any of our luxury properties worldwide.", priceOff: 30, expiryDate: "Sep 25", image: exclusiveOfferCardImg3 },
+  {
+    _id: 3,
+    title: "Teachers Month Special",
+    description: "",
+    priceOff: 20,
+    expiryDate: "Oct 31",
+    image: htm2,
+    link: "https://www.facebook.com/photo?fbid=1290932146412587&set=pcb.1290932203079248",
+  },
+  {
+    _id: 4,
+    title: "Teachers Month Special",
+    description: "",
+    priceOff: 20,
+    expiryDate: "Oct 31",
+    image: htm3,
+    link: "https://www.facebook.com/photo?fbid=1290932143079254&set=pcb.1290932203079248",
+  },
+  
 ];
 
 // Testimonials Dummy Data

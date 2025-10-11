@@ -14,7 +14,7 @@ const ExclusiveOffers = () => {
       <div className="flex flex-col md:flex-row items-center justify-between w-full relative z-10">
         <Title
           align="left"
-          title="✨ Exclusive Offers"
+          title="✨ Exclusive Offers for the month of October!"
           subTitle="Indulge in our limited-time offers crafted to elevate your experience and create timeless memories."
         />
         <button
@@ -34,11 +34,13 @@ const ExclusiveOffers = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mt-16 relative z-10 w-full">
         {exclusiveOffers.map((item) => (
           <div
+            onClick={() => window.open(item.link, "_blank")}
             key={item._id}
             className="group relative overflow-hidden rounded-2xl shadow-lg bg-no-repeat bg-cover bg-center h-[320px] flex flex-col justify-end text-white cursor-pointer transition-all duration-500 hover:scale-[1.03]"
             style={{
               backgroundImage: `url(${item.image})`,
             }}
+            
           >
             {/* Overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent group-hover:from-black/80 transition-all duration-500"></div>

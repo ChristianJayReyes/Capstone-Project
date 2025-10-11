@@ -114,6 +114,7 @@ const About = () => {
                 boxShadow: "0 0 15px rgba(99,102,241,0.5)",
               }}
               className="mt-6 px-8 py-3 bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold rounded-full transition-all"
+              onClick={() => document.getElementById("team-section").scrollIntoView({ behavior: "smooth"})}
             >
               View More →
             </motion.button>
@@ -122,7 +123,7 @@ const About = () => {
       </motion.section>
 
       {/* Meet the Team */}
-      <section className="relative py-24 px-6 bg-gradient-to-b from-indigo-50 via-white to-indigo-100">
+      <section className="relative py-24 px-6 bg-gradient-to-b from-indigo-50 via-white to-indigo-100" id="team-section">
         <h2 className="text-4xl md:text-5xl font-extrabold text-center mb-16 text-gray-800 tracking-tight">
           Meet Our Team
         </h2>

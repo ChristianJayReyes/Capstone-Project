@@ -37,7 +37,7 @@ const FeaturedDestination = () => {
       {/* View All Rooms Button */}
       <button
         onClick={() => {
-          navigate("/accommodation");
+          navigate("/accommodation"); 
           window.scrollTo(0, 0);
         }}
         className="relative mt-20 px-8 py-3 text-base font-semibold rounded-full text-white bg-gradient-to-r from-blue-500 to-yellow-500 shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300"

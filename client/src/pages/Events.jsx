@@ -19,15 +19,9 @@ import { motion } from "framer-motion";
 const EventPage = () => {
   const [openGallery, setOpenGallery] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  const categories = [
-    "Weddings",
-    "Graduations",
-    "Birthdays",
-    "Anniversaries",
-    "Reunions",
-    "Christenings",
-  ];
+  const categories = ["Weddings", "Birthdays", "Christenings"];
 
   const galleryImages = {
     weddings: [wed1, wed2, wed3, wed4],
@@ -167,11 +161,32 @@ const EventPage = () => {
                     key={idx}
                     src={img}
                     alt={`${selectedCategory} ${idx}`}
-                    className="w-full h-40 object-cover rounded-xl shadow-md hover:scale-105 transition"
+                    className="w-full h-40 object-cover rounded-xl shadow-md hover:scale-105 transition cursor-pointer"
+                    onClick={() => setSelectedImage(img)}
                   />
                 ))}
               </div>
             </div>
+
+            {/* Enlarged Image Preview */}
+            {selectedImage && (
+              <div
+                className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+                onClick={() => setSelectedImage(null)}
+              >
+                <img
+                  src={selectedImage}
+                  alt="Preview"
+                  className="max-w-[90%] max-h-[85%] rounded-2xl shadow-2xl object-contain"
+                />
+                <button
+                  onClick={() => setSelectedImage(null)}
+                  className="absolute top-6 right-6 text-white text-3xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -189,7 +204,6 @@ const EventPage = () => {
           <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
             Event Gallery
           </span>
-
         </h2>
 
         {/* Image Gallery Component */}

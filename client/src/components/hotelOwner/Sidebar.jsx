@@ -1,25 +1,55 @@
-import React from 'react'
-import { assets } from '../../assets/assets'
-import { NavLink } from 'react-router-dom'
+import React from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { assets } from "../../assets/assets";
 
-const SideBar = () => {
+const SideBar = ({ isCollapsed = true, onHoverChange }) => {
+  const location = useLocation();
 
-    const sidebarLinks = [
-        { name: 'Dashboard', path: '/owner', icon: assets.dashboardIcon },
-        { name: 'Add Room', path: '/owner/add-room', icon: assets.addIcon },
-        { name: 'List Rooms', path: '/owner/list-room', icon: assets.listIcon },
+  const sidebarLinks = [
+    { name: "Dashboard", path: "/owner", icon: assets.dashboardIcon },
+    { name: "Bookings", path: "/owner/bookings", icon: assets.calenderIcon },
+    { name: "Booking Logs", path: "/owner/booking-logs", icon: assets.bookinglogsIcon },
+    { name: "Guests", path: "/owner/guest", icon: assets.guestIcon },
+    { name: "Rooms", path: "/owner/list-room", icon: assets.listIcon },
+    // Optional future items can be added here
+  ];
 
-    ]
   return (
-    <div className='md:w-64 w-16 border-r border-gray-300 h-full text-base border-gray-300 pt-4 flex flex-col transition-all duration-300'>
-        {sidebarLinks.map((item, index)=>(
-            <NavLink to={item.path} key={index} end='/owner' className={({isActive})=>`flex items-center py-3 px-4 md:px-8 gap-3 ${isActive ? 'border-r-4 md:border-r-[6px] bg-blue-600/10 border-blue-600 text-blue-600': 'hover:bg-gray-100/90 border-white text-gray-700'}`}>
-                <img src={item.icon} alt={item.name} className='min-h-6 min-2-6'/>
-                <p className='md:block hidden text-center'>{item.name}</p>
-            </NavLink>
-        ))}
+    <div
+      className={`group relative min-h-screen bg-white border-r border-gray-200 shadow-sm transition-[width] duration-300 ${
+        isCollapsed ? "w-16" : "w-64"
+      } hover:w-64`}
+      onMouseEnter={() => onHoverChange && onHoverChange(true)}
+      onMouseLeave={() => onHoverChange && onHoverChange(false)}
+    >
+      <div className="flex flex-col pt-4 min-h-screen">
+        {/* Logo intentionally omitted; topbar logo is the single source */}
+        <nav className="flex-1">
+          
+          {sidebarLinks.map((item, index) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <NavLink
+                to={item.path}
+                key={index}
+                className={`flex items-center py-3 px-4 gap-3 transition-all duration-200 ${
+                  isActive
+                    ? "bg-blue-100 text-blue-600"
+                    : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                }`}
+                title={item.name}
+              >
+                <img src={item.icon} alt={item.name} className="w-6 h-6 object-contain" />
+                <span className={`whitespace-nowrap overflow-hidden transition-opacity duration-200 ${isCollapsed ? "opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto" : "opacity-100"}`}>
+                  {item.name}
+                </span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default SideBar
+export default SideBar;

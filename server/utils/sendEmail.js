@@ -17,4 +17,4 @@ export const sendEmail = async (to, otp) => {
         text: `Your verification code is: ${otp}`,
         html: `<h2> Your verification code is: ${otp} </h2>`,
     })
-}
+} 

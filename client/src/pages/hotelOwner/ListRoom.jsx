@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../../styles/listRoom.css";
 import Title from "../../components/Title";
+import { useAppContext } from "../../context/AppContext";
 
 const ListRoom = () => {
   const [rooms, setRooms] = useState([]);
@@ -10,7 +11,9 @@ const ListRoom = () => {
   const fetchRooms = async () => {
     try {
       const { data } = await axios.get("/api/rooms/owner", {
-        header
+        headers:
+          { Authorization: `Bearer ${getToken()}`}
+        
       })
     } catch (error) {
       

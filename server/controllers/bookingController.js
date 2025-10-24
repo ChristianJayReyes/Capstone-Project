@@ -1,141 +1,219 @@
+// server/controllers/bookingController.js
+import connectDB from "../configs/db.js";
 
-//Function to check availability of a room
-const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
+// ✅ Function to check room availability
+const checkAvailability = async ({ checkInDate, checkOutDate, roomId }) => {
   try {
-    const bookings = await Booking.find({
-      room,
-      checkInDate: { $lte: checkOutDate },
-      checkOutDate: { $gte: checkInDate },
-    });
-    const isAvailable = bookings.length === 0;
-    return isAvailable;
+    const pool = await connectDB();
+
+    const [bookings] = await pool.query(
+      `SELECT * 
+       FROM bookings 
+       WHERE room_type_id = ?
+       AND (
+         (check_in <= ? AND check_out >= ?)
+       )`,
+      [roomId, checkOutDate, checkInDate]
+    );
+
+    // If there are no overlapping bookings, room is available
+    return bookings.length === 0;
   } catch (error) {
-    console.error(error.message);
+    console.error("Error checking availability:", error);
+    throw error;
   }
 };
 
-//API to check availability of a room
+// ✅ API: Check availability of a room
 export const checkAvailabilityAPI = async (req, res) => {
   try {
-    const { room, checkInDate, checkOutDate } = req.body;
+    const { roomId, checkInDate, checkOutDate } = req.body;
     const isAvailable = await checkAvailability({
       checkInDate,
       checkOutDate,
-      room,
+      roomId,
     });
-    res.json({
-      success: true,
-      isAvailable,
-    });
+    res.json({ success: true, isAvailable });
   } catch (error) {
-    res.json({
+    console.error("Error in checkAvailabilityAPI:", error);
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error checking room availability",
     });
   }
 };
 
-//API to create a new booking
+// API: Create a new booking
 // POST /api/bookings/book
-
 export const createBooking = async (req, res) => {
   try {
-    const { room, checkInDate, checkOutDate, guests } = req.body;
-    const user = req.user._id;
-
-    //Before Booking Check Availability
-    const isAvailable = await checkAvailability({
+    const {
+      userId,
+      roomId,
       checkInDate,
       checkOutDate,
-      room,
-    });
+      guests,
+      totalPrice,
+      isPaid,
+    } = req.body;
 
-    if (!isAvailable) {
-      return res.json({
+    console.log("Received booking data:", req.body);
+
+    const db = await connectDB();
+
+    // Extract adults and children
+    const adults = parseInt(guests.adults) || 0;
+    const children = parseInt(guests.children) || 0;
+
+    // ✅ 1. Check if the room is already booked for selected dates
+    const [existingBookings] = await db.query(
+      `SELECT * FROM bookings
+       WHERE room_type_id = ?
+       AND (
+         (check_in <= ? AND check_out >= ?) OR
+         (check_in <= ? AND check_out >= ?) OR
+         (? <= check_in AND ? >= check_out)
+       )`,
+      [
+        roomId,
+        checkInDate,
+        checkInDate,
+        checkOutDate,
+        checkOutDate,
+        checkInDate,
+        checkOutDate,
+      ]
+    );
+
+    if (existingBookings.length > 0) {
+      return res.status(400).json({
         success: false,
-        message: "Room is not available for the selected dates",
+        message: "❌ This room is already booked for the selected dates.",
       });
     }
-    //Get the total price from the room data
-    const roomData = await Room.findById(room).populate("hotel");
-    let totalPrice = roomData.pricePerNight;
 
-    //Calculation of total price
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
-    const timeDifference = checkOut.getTime() - checkIn.getTime();
-    const nights = Math.ceil(timeDifference / (1000 * 3600 * 24));
-    totalPrice *= nights;
+    // ✅ 2. If not booked yet, insert new booking
+    const [result] = await db.query(
+      `INSERT INTO bookings 
+        (user_id, room_type_id, check_in, check_out, adults, children, total_price, payment_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.user_id,
+        roomId,
+        checkInDate,
+        checkOutDate,
+        adults,
+        children,
+        totalPrice,
+        isPaid ? "paid" : "unpaid",
+      ]
+    );
 
-    const booking = await Booking.create({
-      user,
-      room,
-      hotel: roomData.hotel._id,
-      guests: +guests,
-      checkInDate,
-      checkOutDate,
-      totalPrice,
-    });
-
-    res.json({
+    // ✅ 3. Send response back to frontend
+    res.status(201).json({
       success: true,
-      message: "Booking created successfully",
+      message: "✅ Booking created successfully!",
+      booking: {
+        booking_id: result.insertId,
+        user_id: req.user.user_id,
+        room_type_id: roomId,
+        check_in: checkInDate,
+        check_out: checkOutDate,
+        adults,
+        children,
+        total_price: totalPrice,
+        payment_status: isPaid ? "paid" : "unpaid",
+      },
     });
   } catch (error) {
-    res.json({
+    console.error("Error creating booking:", error);
+    res.status(500).json({
       success: false,
-      message: "Failed to create booking",
+      message: "Error creating booking",
+      error: error.message,
     });
   }
 };
 
-//API to get all bookings of a user
-//GET /api/bookings/user
+// API: Get all bookings of a user
+// GET /api/bookings/user
 export const getUserBookings = async (req, res) => {
   try {
-    const user = req.user._id;
-    const bookings = await Booking.find({ user })
-      .populate("room hotel")
-      .sort({ createdAt: -1 });
-    res.json({
-      success: true,
-      bookings,
-    });
+    const pool = await connectDB();
+    const userId = req.user.id;
+
+    const [bookings] = await pool.query(
+      `SELECT 
+          b.booking_id,
+          b.check_in AS checkInDate,
+          b.check_out AS checkOutDate,
+          b.total_price AS totalPrice,
+          b.payment_status AS isPaid,
+          r.room_type_id,
+          r.room_number,
+          rt.room_type_id,
+          rt.type_name AS roomType,
+          rt.capacity_adults,
+          rt.capacity_children,
+          rt.price_per_night
+        FROM bookings b
+        JOIN rooms r ON b.room_type_id = r.room_type_id
+        JOIN room_types rt ON r.room_type_id = rt.room_type_id
+        WHERE b.user_id = ?
+        ORDER BY b.booking_id DESC;`,
+      [userId]
+    );
+
+    res.json({ success: true, bookings });
   } catch (error) {
-    res.json({
+    console.error("Error fetching user bookings:", error);
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch bookings",
+      message: "Error fetching user bookings",
     });
   }
 };
 
+// API: Get dashboard data (for owner/admin)
+// GET /api/bookings/hotel
 export const getHotelBookings = async (req, res) => {
   try {
-    const hotel = await Hotel.findOne({ owner: req.auth.userId });
-    if (!hotel) {
-      return res.json({
-        success: false,
-        message: "Hotel not found",
-      });
-    }
-    const bookings = await Booking.find({ hotel: hotel._id })
-      .populate("room hotel user")
-      .sort({ createdAt: -1 });
-    //Total Bookings
+    const pool = await connectDB();
+
+    // Assuming only admins/owners can view all bookings
+    const [bookings] = await pool.query(`
+      SELECT 
+        b.booking_id,
+        b.total_price,
+        b.check_in,
+        b.check_out,
+        r.room_number,
+        rt.type_name AS roomType
+      FROM bookings b
+      JOIN rooms r ON b.room_type_id = r.room_type_id
+      JOIN room_types rt ON r.room_type_id = rt.room_type_id
+      ORDER BY b.booking_id DESC;
+    `);
+
     const totalBookings = bookings.length;
-    //Total Revenue
     const totalRevenue = bookings.reduce(
-      (acc, booking) => acc + booking.totalPrice,
+      (sum, b) => sum + Number(b.total_price),
       0
     );
+
     res.json({
       success: true,
-      dashboardData: { totalBookings, totalRevenue },
+      dashboardData: {
+        totalBookings,
+        totalRevenue,
+        bookings,
+      },
     });
   } catch (error) {
-    res.json({
+    console.error("Error fetching hotel bookings:", error);
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error fetching hotel bookings",
     });
   }
 };

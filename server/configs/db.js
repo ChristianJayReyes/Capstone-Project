@@ -1,14 +1,15 @@
-// configs/db.js
+
 import mysql from "mysql2/promise";
+
 
 let pool;
 
 const connectDB = async () => {
   if (!pool) {
     pool = mysql.createPool({
-      host: "mysql-rosarioresortshotel.alwaysdata.net",   // e.g. localhost
+      host: "mysql-rosarioresortshotel.alwaysdata.net",
       user: "423538",   // e.g. root
-      password: "rosarioresorts",
+      password: process.env.DB_PASS,
       database: "rosarioresortshotel_db",
       waitForConnections: true,
       connectionLimit: 10,

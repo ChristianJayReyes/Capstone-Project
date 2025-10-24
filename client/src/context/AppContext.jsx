@@ -3,6 +3,7 @@ import axios from "axios";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { set } from "date-fns";
 
 axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL;
 
@@ -14,7 +15,7 @@ export const AppProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-
+  const [bookings, setBookings] = useState([]);
   const [isOwner, setIsOwner] = useState(false);
   const [showHotelReg, setShowHotelReg] = useState(false);
   const [searchedCities, setSearchedCities] = useState([]);
@@ -115,7 +116,9 @@ export const AppProvider = ({ children }) => {
     searchedCities,
     setSearchedCities,
     loginUser,
-    logoutUser, 
+    logoutUser,
+    bookings,
+    setBookings, 
   };
 
   return (<AppContext.Provider value={value}>{children}</AppContext.Provider>)

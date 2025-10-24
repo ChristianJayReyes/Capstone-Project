@@ -48,8 +48,8 @@ const About = () => {
     >
       {/* Hero Section */}
       <div
-        className="relative h-[550px] md:h-[600px] bg-cover bg-center flex items-center justify-center"
-        style={{ backgroundImage: `url(${heroImage})` }}
+        className="h-[750px] bg-full bg-center flex items-center justify-center"
+        style={{ backgroundImage: `url(${assets.poolers})` }}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex items-center justify-center text-center px-6">
           <motion.div

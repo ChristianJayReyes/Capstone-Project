@@ -20,6 +20,9 @@ import { useAppContext } from './context/AppContext'
 import LoginForm from './pages/LoginForm'
 import FaqButton from './components/FaqButton'
 import Offers from './pages/Offers'
+import Booking_logs from './pages/hotelOwner/Booking_logs'
+import Guests from './pages/hotelOwner/Guests'
+import Bookings from './pages/hotelOwner/Bookings'
 
 const App = () => {
   
@@ -51,6 +54,11 @@ const App = () => {
             <Route path="add-room" element={<AddRoom />} />
             <Route path="list-room" element={<ListRoom />} />
             <Route path="add-event" element={<AddEvent />} />
+            <Route path="booking-logs" element={<Booking_logs />} />
+            <Route path="guest" element={<Guests />} />
+            <Route path="bookings" element={<Bookings />} />
+            
+
         </Route>
       </Routes>
     </div>

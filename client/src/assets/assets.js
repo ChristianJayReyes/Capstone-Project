@@ -389,6 +389,7 @@ export const hotelDummyData = [
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
     __v: 0,
+    roomNumbers: ["101", "102", "103", "104", "105"],
   },
   {
     _id: "02",
@@ -399,6 +400,7 @@ export const hotelDummyData = [
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
     __v: 0,
+    roomNumbers: ["201", "202", "203", "204", "205"],
   },
   {
     _id: "03",

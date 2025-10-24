@@ -23,10 +23,14 @@ router.post("/register", async (req, res) => {
 
   try {
     const db = await connectDB();
-    const [existing] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    const [existing] = await db.query("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
 
     if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: "Email already exists" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -42,23 +46,44 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// --- Login (Step 1: Send OTP) ---
+// --- Login ---
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
     const db = await connectDB();
-    const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
 
     if (rows.length === 0) {
-      return res.status(400).json({ success: false, message: "User not found" });
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
     }
 
+    // Log for debugging only
     const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
+    console.log("Received password:", password, typeof password);
+    console.log("Stored password:", user.password, typeof user.password);
+
+    const plainPassword =
+      typeof password === "object" && password !== null
+        ? password.toString()
+        : password;
+
+    const storedPassword =
+      typeof user.password === "object" && user.password !== null
+        ? user.password.toString()
+        : user.password;
+
+    // Compare passwords
+    const isMatch = await bcrypt.compare(plainPassword, storedPassword);
 
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid credentials" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
     }
 
     // Generate 6-digit OTP
@@ -105,13 +130,18 @@ router.post("/verify-otp", async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid or expired OTP" });
     }
 
     const user = rows[0];
 
     // Clear OTP after success
-    await db.query("UPDATE users SET otp = NULL, otp_expires = NULL WHERE user_id = ?", [user.user_id]);
+    await db.query(
+      "UPDATE users SET otp = NULL, otp_expires = NULL WHERE user_id = ?",
+      [user.user_id]
+    );
 
     // Generate JWT token
     const token = jwt.sign(

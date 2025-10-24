@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { DateRange } from "react-date-range";
-import "react-date-range/dist/styles.css"; // main css file
-import "react-date-range/dist/theme/default.css"; // theme css file
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
 import {
   assets,
   facilityIcons,
+  hotelDummyData,
   roomCommonData,
   roomsDummyData,
 } from "../assets/assets";
 import StarRating from "../components/StarRating";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAppContext } from "../context/AppContext";
+import toast from "react-hot-toast";
 
 const RoomDetails = () => {
   const { id } = useParams();
@@ -19,10 +23,64 @@ const RoomDetails = () => {
   // Calendar Pop-up
   const [isOpen, setIsOpen] = useState(false);
 
-  // Inputs
-  const [checkInDate, setCheckInDate] = useState("");
-  const [checkOutDate, setCheckOutDate] = useState("");
+  //Room Number
+  const [selectedRoom, setSelectedRoom] = useState("");
+  const [roomNumbers, setRoomNumbers] = useState([]);
 
+  //Handle Confirm
+  const { axios, token, user, setBookings } = useAppContext();
+  const handleConfirm = async () => {
+    try {
+      const checkInDate = range[0].startDate;
+      const checkOutDate = range[0].endDate;
+      const totalPrice =
+        room.pricePerNight *
+        Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+
+      const payload = {
+        roomId: selectedRoom, // or room.room_type_id if that’s what your DB uses
+        checkInDate,
+        checkOutDate,
+        guests: {
+          adults: document.getElementById("adults").value,
+          children: document.getElementById("children").value,
+        },
+        totalPrice,
+        isPaid: false,
+      };
+
+      const { data } = await axios.post("/api/bookings/book", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        toast.success("Booking confirmed!");
+        setBookings((prev) => [data.booking, ...prev]);
+        setIsOpen(false);
+      } else {
+        toast.error(data.message || "Booking failed");
+      }
+    } catch (error) {
+      console.error("Booking error:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        "Something went wrong while confirming the booking.";
+      toast.error(errorMessage);
+    }
+  };
+
+  useEffect(() => {
+    if (room) {
+      const hotel = hotelDummyData.find(
+        (hotel) => hotel.name === room.hotel.name
+      );
+      if (hotel && hotel.roomNumbers) {
+        setRoomNumbers(hotel.roomNumbers);
+      } else {
+        setRoomNumbers([]);
+      }
+    }
+  }, [room]);
   // Calendar state
   const [range, setRange] = useState([
     {
@@ -38,10 +96,26 @@ const RoomDetails = () => {
     room && setMainImage(room.images[0]);
   }, [id]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Open modal with calendar
-    setIsOpen(true);
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/rooms/check/${selectedRoom}`
+      );
+      const data = await response.json();
+
+      if (!data.success) {
+        alert(data.message);
+        return;
+      }
+
+      // Open modal with calendar
+      setIsOpen(true);
+    } catch (error) {
+      console.error(error);
+      alert("Error checking room availability");
+    }
   };
 
   return (
@@ -123,6 +197,7 @@ const RoomDetails = () => {
           className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white shadow-[0px_0px_20px_rgba(0,0,0,0.15)] rounded-xl p-6 mx-auto mt-16 max-w-6xl"
         >
           <div className="flex flex-col flex-wrap md:flex-row items-start md:items-center gap-4 md:gap-10 text-gray-500">
+            {/* Adults Input */}
             <div className="flex flex-col">
               <label htmlFor="adults" className="font-medium">
                 Adults
@@ -135,7 +210,10 @@ const RoomDetails = () => {
                 required
               />
             </div>
+
             <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
+
+            {/* Children Input */}
             <div className="flex flex-col">
               <label htmlFor="children" className="font-medium">
                 Children
@@ -148,60 +226,87 @@ const RoomDetails = () => {
                 required
               />
             </div>
+
             <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
+
+            {/* Room Number Input */}
             <div className="flex flex-col">
               <label htmlFor="guests" className="font-medium">
-                Guests
+                Room Number
               </label>
               <input
-                type="number"
-                id="guests"
-                placeholder="0"
-                className="max-w-20 rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none"
+                list="destinations"
+                type="text"
+                placeholder="Type here..."
+                value={selectedRoom}
+                onChange={(e) => setSelectedRoom(e.target.value)}
+                className="px-4 py-2 rounded-lg bg-white/80 text-gray-800 outline-none focus:ring-2 focus:ring-[#007BFF]"
                 required
               />
+              <datalist id="destinations">
+                {roomNumbers.map((room, index) => (
+                  <option value={room} key={index} />
+                ))}
+              </datalist>
             </div>
           </div>
+
           <button
             type="submit"
-            className="bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full max md:mt-4 md:px-25 py-3 md:py-4 text-base cursor-pointer"
+            className="bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full md:mt-4 md:px-25 py-3 md:py-4 text-base cursor-pointer"
           >
             Check Availability
           </button>
         </form>
 
-        {/* Floating Calendar Modal */}
-        {isOpen && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-xl w-[90%] md:w-[600px]">
-              <h2 className="text-2xl font-bold mb-4">Select Your Dates</h2>
-              <DateRange
-                editableDateInputs={true}
-                onChange={(item) => setRange([item.selection])}
-                moveRangeOnFirstSelection={false}
-                moveRangeBackwards={false}
-                ranges={range}
-              />
-              <div className="flex justify-end gap-4 mt-4">
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 bg-gray-200 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    // You can compare inputs with calendar dates here
-                    setIsOpen(false);
-                  }}
-                  className="px-4 py-2 bg-primary text-white rounded-md"
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="bg-white/95 p-6 md:p-8 rounded-2xl shadow-2xl w-[90%] md:w-[600px] border border-gray-100"
+                initial={{ scale: 0.9, y: 40, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 120, damping: 12 }}
+              >
+                <h2 className="text-2xl font-semibold text-gray-800 mb-5 text-center">
+                  Select Your Dates
+                </h2>
+
+                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                  <DateRange
+                    editableDateInputs={true}
+                    onChange={(item) => setRange([item.selection])}
+                    moveRangeOnFirstSelection={false}
+                    moveRangeBackwards={false}
+                    ranges={range}
+                    rangeColors={["#4F46E5"]} // primary color highlight
+                  />
+                </div>
+
+                <div className="flex justify-end gap-4 mt-6">
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="px-5 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    className="px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 shadow-md active:scale-95 transition-all duration-200"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="mt-15 space-y-5">
           {roomCommonData.map((spec, index) => (

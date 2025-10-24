@@ -10,11 +10,11 @@ import jwt from "jsonwebtoken";
 import connectDB from "./configs/db.js";
 import connectCloudinary from "./configs/cloudinary.js";
 
-import authRouter from "./routes/authRoutes.js";
-import userRouter from "./routes/userRoutes.js";
-import hotelRouter from "./routes/hotelRoutes.js";
-import roomRouter from "./routes/roomRoutes.js";
-import bookingRouter from "./routes/bookingRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import hotelRoutes from "./routes/hotelRoutes.js";
+import roomRoutes from "./routes/roomRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
 
 // 🔹 Initialize DB + Cloudinary
 connectDB();
@@ -97,11 +97,11 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // 🔹 Routes
-app.use("/api/auth", authRouter);
-app.use("/api/user", userRouter);
-app.use("/api/hotel", hotelRouter);
-app.use("/api/rooms", roomRouter);
-app.use("/api/bookings", bookingRouter);
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/hotel", hotelRoutes);
+app.use("/api/rooms", roomRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 // Test route
 app.get("/", (req, res) => res.send("API is working fine"));

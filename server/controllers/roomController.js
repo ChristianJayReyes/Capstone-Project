@@ -1,6 +1,6 @@
 
 import { v2 as cloudinary } from "cloudinary";
-
+import connectDB from "../configs/db.js";
 
 //Api to create new room for the hotel
 export const createRoom = async (req, res) => {
@@ -77,20 +77,34 @@ export const getOwnerRooms = async (req, res) => {
     }
 }
 //API to toggle availability of a room
-export const toggleRoomAvailability = async (req, res) => {
-    try {
-        const {roomId} = req.body;
-        const roomData = await Room.findById(roomId);
-        roomData.isAvailable = !roomData.isAvailable;
-        await roomData.save();
-        res.json({
-            success: true,
-            message: "Room Availability is Updated Successfully"
-        })
-    } catch (error) {
-        res.json({
-            success: false,
-            message: error.message
-        });
+export const checkRoomAvailability = async (req, res) => {
+  try {
+    const { room_number } = req.params;
+
+    const db = await connectDB();
+
+    const [results] = await db.query("SELECT * FROM rooms WHERE room_number = ?", [room_number]);
+
+    if (results.length === 0) {
+      return res.status(404).json({ success: false, message: "Room not found" });
     }
-}
+
+    const room = results[0];
+
+    if (room.status !== "available") {
+      return res.json({
+        success: false,
+        message: "This room is not available for the following days.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Room is available",
+      room,
+    });
+  } catch (error) {
+    console.error("❌ Error checking room:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

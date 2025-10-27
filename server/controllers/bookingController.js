@@ -1,5 +1,6 @@
 // server/controllers/bookingController.js
 import connectDB from "../configs/db.js";
+import { sendReservationEmail } from "../utils/reservationEmail.js";
 
 // ✅ Function to check room availability
 const checkAvailability = async ({ checkInDate, checkOutDate, roomId }) => {
@@ -48,7 +49,7 @@ export const checkAvailabilityAPI = async (req, res) => {
 export const createBooking = async (req, res) => {
   try {
     const {
-      userId,
+      email,
       roomId,
       checkInDate,
       checkOutDate,
@@ -57,15 +58,20 @@ export const createBooking = async (req, res) => {
       isPaid,
     } = req.body;
 
-    console.log("Received booking data:", req.body);
+    console.log("📥 Received booking data:", req.body);
 
     const db = await connectDB();
 
-    // Extract adults and children
+    // ✅ Convert ISO date to MySQL DATE format (YYYY-MM-DD)
+    const formatDate = (date) => new Date(date).toISOString().slice(0, 10);
+    const formattedCheckIn = formatDate(checkInDate);
+    const formattedCheckOut = formatDate(checkOutDate);
+
+    // ✅ Extract adults and children
     const adults = parseInt(guests.adults) || 0;
     const children = parseInt(guests.children) || 0;
 
-    // ✅ 1. Check if the room is already booked for selected dates
+    // ✅ Check if the room is already booked within the selected range
     const [existingBookings] = await db.query(
       `SELECT * FROM bookings
        WHERE room_type_id = ?
@@ -76,12 +82,12 @@ export const createBooking = async (req, res) => {
        )`,
       [
         roomId,
-        checkInDate,
-        checkInDate,
-        checkOutDate,
-        checkOutDate,
-        checkInDate,
-        checkOutDate,
+        formattedCheckIn,
+        formattedCheckIn,
+        formattedCheckOut,
+        formattedCheckOut,
+        formattedCheckIn,
+        formattedCheckOut,
       ]
     );
 
@@ -92,41 +98,65 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // ✅ 2. If not booked yet, insert new booking
+    // ✅ Insert new booking record
     const [result] = await db.query(
       `INSERT INTO bookings 
-        (user_id, room_type_id, check_in, check_out, adults, children, total_price, payment_status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (user_id, email, room_type_id, check_in, check_out, adults, children, total_price, payment_status, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        req.user.user_id,
+        req.user.user_id || null,
+        email,
         roomId,
-        checkInDate,
-        checkOutDate,
+        formattedCheckIn,
+        formattedCheckOut,
         adults,
         children,
         totalPrice,
         isPaid ? "paid" : "unpaid",
+        "pending",
       ]
     );
 
-    // ✅ 3. Send response back to frontend
+    // ✅ Respond to frontend
     res.status(201).json({
       success: true,
       message: "✅ Booking created successfully!",
       booking: {
         booking_id: result.insertId,
-        user_id: req.user.user_id,
+        user_id: req.user.user_id || null,
+        user_email: req.user.email,
         room_type_id: roomId,
-        check_in: checkInDate,
-        check_out: checkOutDate,
+        check_in: formattedCheckIn,
+        check_out: formattedCheckOut,
         adults,
         children,
         total_price: totalPrice,
         payment_status: isPaid ? "paid" : "unpaid",
       },
     });
+
+    // Send email to the user
+    // const pool = await connectDB();
+    // const [roomRows] = await pool.query(
+    //   "SELECT name FROM rooms WHERE room_type_id=?",
+    //   [roomId]
+    // );
+    // const roomName = roomRows.length > 0 ? roomRows[0].name : "Unknown Room";
+
+    const reservationDetails = {
+      bookingId: result.insertId,
+      checkInDate: formattedCheckIn,
+      checkOutDate: formattedCheckOut,
+      roomType: roomId,
+      totalPrice,
+      guests: {
+        adults,
+        children,
+      },
+    };
+    await sendReservationEmail(email, reservationDetails);
   } catch (error) {
-    console.error("Error creating booking:", error);
+    console.error("❌ Error creating booking:", error);
     res.status(500).json({
       success: false,
       message: "Error creating booking",

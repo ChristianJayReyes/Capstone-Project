@@ -29,18 +29,24 @@ const RoomDetails = () => {
 
   //Handle Confirm
   const { axios, token, user, setBookings } = useAppContext();
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const handleConfirm = async () => {
     try {
       const checkInDate = range[0].startDate;
       const checkOutDate = range[0].endDate;
+
+      const formatDate = (date) => date.toISOString().split("T")[0];
+      const formattedCheckIn = formatDate(checkInDate);
+      const formattedCheckOut = formatDate(checkOutDate);
       const totalPrice =
         room.pricePerNight *
         Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
 
       const payload = {
+        email: user?.email,
         roomId: selectedRoom, // or room.room_type_id if that’s what your DB uses
-        checkInDate,
-        checkOutDate,
+        checkInDate: formattedCheckIn,
+        checkOutDate: formattedCheckOut,
         guests: {
           adults: document.getElementById("adults").value,
           children: document.getElementById("children").value,
@@ -255,7 +261,7 @@ const RoomDetails = () => {
             type="submit"
             className="bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full md:mt-4 md:px-25 py-3 md:py-4 text-base cursor-pointer"
           >
-            Check Availability
+            Check Date
           </button>
         </form>
 
@@ -297,8 +303,47 @@ const RoomDetails = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={handleConfirm}
+                    onClick={() => setShowConfirmModal(true)}
                     className="px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 shadow-md active:scale-95 transition-all duration-200"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showConfirmModal && (
+            <motion.div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="bg-white p-6 md:p-8 rounded-2xl shadow-2xl w-[90%] md:w-[450px]"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+              >
+                <h2 className="text-xl font-semibold text-gray-800 text-center mb-4">
+                  Are you sure you want to proceed with the reservation?
+                </h2>
+                <div className="flex justify-center gap-4 mt-6">
+                  <button
+                    onClick={() => setShowConfirmModal(false)}
+                    className="px-5 py-2.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleConfirm(); // ✅ Actually confirm booking
+                      setShowConfirmModal(false);
+                      setIsOpen(false);
+                    }}
+                    className="px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-all"
                   >
                     Confirm
                   </button>

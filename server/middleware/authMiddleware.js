@@ -1,5 +1,5 @@
 // middleware/authMiddleware.js
-import jwt from "jsonwebtoken";
+import jwt, { decode } from "jsonwebtoken";
 import connectDB from "../configs/db.js";
 
 export const protect = async (req, res, next) => {
@@ -29,7 +29,7 @@ export const protect = async (req, res, next) => {
         .json({ success: false, message: "User not found" });
     }
 
-    req.user = rows[0]; // attach user object to request
+    req.user = {...rows[0], user_id: decoded.id, email: decoded.user_email,}; 
     next();
   } catch (err) {
     console.error("JWT Error:", err);

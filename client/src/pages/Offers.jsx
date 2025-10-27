@@ -16,6 +16,6 @@ const Offers = () => {
       </div>
     </motion.div>
   )
-}
+} 
 
 export default Offers

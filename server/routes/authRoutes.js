@@ -176,7 +176,7 @@ router.get(
       { expiresIn: "1h" }
     );
 
-    // 👇 Send back both token + user
+    // Send back both token + user
     const userData = encodeURIComponent(JSON.stringify(req.user));
 
     // redirect to frontend with both

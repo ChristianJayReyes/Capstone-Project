@@ -15,6 +15,6 @@ export const sendEmail = async (to, otp) => {
         to,
         subject: "Your OTP Code",
         text: `Your verification code is: ${otp}`,
-        html: `<h2> Your verification code is: ${otp} </h2>`,
+        html: `<h2> Your verification code is: ${otp} </h2>`, 
     })
 } 

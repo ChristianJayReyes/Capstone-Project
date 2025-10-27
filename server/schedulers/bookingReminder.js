@@ -8,7 +8,7 @@ cron.schedule("0 8 * * *", async () => {
 
   const db = await connectDB();
 
-  const tomorrow = new Date();
+  const tomorrow = new Date(); 
   tomorrow.setDate(tomorrow.getDate() + 1);
   const formattedTomorrow = tomorrow.toISOString().slice(0, 10);
 

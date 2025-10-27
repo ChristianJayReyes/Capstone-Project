@@ -22,7 +22,7 @@ export const registerHotel = async (req, res) => {
     });
 
     await User.findByIdAndUpdate(owner, { role: "hotelOwner" });
-
+ 
     res.json({
       success: true,
       message: "Hotel registered successfully",

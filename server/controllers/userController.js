@@ -41,3 +41,4 @@ export const storeRecentSearchedCities = async (req, res) => {
         })
     }
 }
+ 

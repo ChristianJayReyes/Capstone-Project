@@ -151,7 +151,7 @@ export const createBooking = async (req, res) => {
       totalPrice,
       guests: {
         adults,
-        children,
+        children, 
       },
     };
     await sendReservationEmail(email, reservationDetails);

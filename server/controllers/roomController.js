@@ -90,7 +90,7 @@ export const checkRoomAvailability = async (req, res) => {
     }
 
     const room = results[0];
-
+ 
     if (room.status !== "available") {
       return res.json({
         success: false,

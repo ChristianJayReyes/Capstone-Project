@@ -15,7 +15,7 @@ const LoginForm = () => {
 
   // Login states
   const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginPassword, setLoginPassword] = useState(""); 
 
   // OTP states
   const [step, setStep] = useState(1); 

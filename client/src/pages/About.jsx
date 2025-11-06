@@ -57,13 +57,7 @@ const About = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1.2 }}
           >
-            <h1 className="text-5xl md:text-6xl font-extrabold tracking-wide text-white drop-shadow-lg">
-              Welcome to Paradise
-            </h1>
-            <p className="mt-4 text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
-              Experience luxury, comfort, and unforgettable memories at our
-              resort.
-            </p>
+            
           </motion.div>
         </div>
       </div>

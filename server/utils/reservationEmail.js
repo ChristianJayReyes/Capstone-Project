@@ -47,7 +47,11 @@ export const sendReservationEmail = async (to, reservationDetails, isReminder = 
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Check-In:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.checkInDate}</td>
+
               </tr> 
+
+              </tr>
+
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Check-Out:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.checkOutDate}</td>

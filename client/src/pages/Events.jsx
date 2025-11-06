@@ -1,4 +1,4 @@
-import React, { use, useState } from "react";
+import React, { useState } from "react";
 import { assets, eventImages } from "../assets/assets";
 import Testimonial from "../components/Testimonial";
 import ImageGallery from "../components/ImageGallery";
@@ -15,11 +15,30 @@ import binyag2 from "../assets/christening/binyag2.jpg";
 import binyag3 from "../assets/christening/binyag3.jpeg";
 import binyag4 from "../assets/christening/binyag4.jpeg";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
+import { DateRange } from "react-date-range";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
 
 const EventPage = () => {
   const [openGallery, setOpenGallery] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [openForm, setOpenForm] = useState(false);
+  const [openCalendar, setOpenCalendar] = useState(false);
+  const [range, setRange] = useState([
+    {
+      startDate: new Date(),
+      endDate: new Date(),
+      key: "selection",
+    },
+  ]);
+  const [formData, setFormData] = useState({
+    customerName: "",
+    email: "",
+    contactNumber: "",
+    specialRequest: "",
+  });
 
   const categories = ["Weddings", "Birthdays", "Christenings"];
 
@@ -42,6 +61,46 @@ const EventPage = () => {
       eventImages["reunions"],
     ],
     christenings: [binyag1, binyag2, binyag3, binyag4],
+  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch("http://localhost:3000/api/eventBookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customer_name: formData.customerName,
+          email: formData.email,
+          contact_number: formData.contactNumber,
+          special_request: formData.specialRequest,
+          event_start_date: range[0].startDate,
+          event_end_date: range[0].endDate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message || "Event booked successfully!");
+        setOpenForm(false);
+        setFormData({
+          customerName: "",
+          email: "",
+          contactNumber: "",
+          specialRequest: "",
+        });
+      } else {
+        toast.error(
+          data.message || "Failed to submit booking. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Error submitting booking:", error);
+      toast.error("An error occurred. Please try again later.");
+    }
   };
   return (
     <motion.div
@@ -288,7 +347,10 @@ const EventPage = () => {
                 ))}
               </ul>
 
-              <button className="mt-8 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-3 rounded-full transition-all duration-300 font-semibold shadow-md hover:shadow-lg">
+              <button
+                className="mt-8 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-3 rounded-full transition-all duration-300 font-semibold shadow-md hover:shadow-lg"
+                onClick={() => setOpenForm(true)}
+              >
                 Book Now
               </button>
             </div>
@@ -304,6 +366,155 @@ const EventPage = () => {
       </div>
 
       <div className="w-48 h-1 mx-auto bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full my-16"></div>
+
+      {openForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative w-[90%] max-w-lg bg-white/80 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/40 p-8"
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setOpenForm(false)}
+              className="absolute top-4 right-4 text-gray-700 hover:text-black text-2xl font-bold"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-2xl font-extrabold text-center mb-6 text-gray-800">
+              Form for Event Reservation
+            </h2>
+
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your full name..."
+                  value={formData.customerName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customerName: e.target.value })
+                  }
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your email address..."
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Contact Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your contact number..."
+                  value={formData.contactNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactNumber: e.target.value })
+                  }
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Special Requests
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="Additional requests or details..."
+                  value={formData.specialRequest}
+                  onChange={(e) =>
+                    setFormData({ ...formData, specialRequest: e.target.value })
+                  }
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                ></textarea>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-center justify-between gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setOpenCalendar(true)}
+                  className="w-full md:w-1/2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2.5 rounded-lg shadow-lg hover:scale-105 transition"
+                >
+                  📅 Open Calendar
+                </button>
+
+                <button
+                  type="submit"
+                  className="w-full md:w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2.5 rounded-lg shadow-lg hover:scale-105 transition"
+                >
+                  Confirm
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {openCalendar && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-[60]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white/95 p-6 md:p-8 rounded-2xl shadow-2xl w-[90%] md:w-[450px] border border-gray-100"
+          >
+            <h2 className="text-2xl font-semibold text-gray-800 mb-5 text-center">
+              Select Event Dates
+            </h2>
+
+            <div className="rounded-lg border border-gray-200 overflow-hidden w-full">
+              <DateRange
+                editableDateInputs={true}
+                onChange={(item) => setRange([item.selection])}
+                moveRangeOnFirstSelection={false}
+                ranges={range}
+                rangeColors={["#2563eb"]}
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => setOpenCalendar(false)}
+                className="px-5 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setOpenCalendar(false);
+                  toast.success("Event date selected successfully!");
+                }}
+                className="px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-95 transition-all duration-200"
+              >
+                Continue
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 };

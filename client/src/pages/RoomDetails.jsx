@@ -23,13 +23,26 @@ const RoomDetails = () => {
   // Calendar Pop-up
   const [isOpen, setIsOpen] = useState(false);
 
-  //Room Number
+  // Room Number
   const [selectedRoom, setSelectedRoom] = useState("");
   const [roomNumbers, setRoomNumbers] = useState([]);
 
-  //Handle Confirm
+  // Context
   const { axios, token, user, setBookings } = useAppContext();
+
+  // Confirm Modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Calendar state
+  const [range, setRange] = useState([
+    {
+      startDate: new Date(),
+      endDate: new Date(),
+      key: "selection",
+    },
+  ]);
+
+  // Handle Confirm Booking
   const handleConfirm = async () => {
     try {
       const checkInDate = range[0].startDate;
@@ -38,13 +51,15 @@ const RoomDetails = () => {
       const formatDate = (date) => date.toISOString().split("T")[0];
       const formattedCheckIn = formatDate(checkInDate);
       const formattedCheckOut = formatDate(checkOutDate);
+
       const totalPrice =
         room.pricePerNight *
         Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
 
       const payload = {
         email: user?.email,
-        roomId: selectedRoom, // or room.room_type_id if that’s what your DB uses
+        roomId: room._id,
+        roomNumber: selectedRoom, 
         checkInDate: formattedCheckIn,
         checkOutDate: formattedCheckOut,
         guests: {
@@ -54,7 +69,7 @@ const RoomDetails = () => {
         totalPrice,
         isPaid: false,
       };
-
+      console.log("Booking Payload:", payload);
       const { data } = await axios.post("/api/bookings/book", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -75,6 +90,7 @@ const RoomDetails = () => {
     }
   };
 
+  // Load Room Numbers
   useEffect(() => {
     if (room) {
       const hotel = hotelDummyData.find(
@@ -87,24 +103,19 @@ const RoomDetails = () => {
       }
     }
   }, [room]);
-  // Calendar state
-  const [range, setRange] = useState([
-    {
-      startDate: new Date(),
-      endDate: new Date(),
-      key: "selection",
-    },
-  ]);
 
+  // Load Room Details
   useEffect(() => {
-    const room = roomsDummyData.find((room) => room._id === id);
-    room && setRoom(room);
-    room && setMainImage(room.images[0]);
+    const roomData = roomsDummyData.find((room) => room._id === id);
+    if (roomData) {
+      setRoom(roomData);
+      setMainImage(roomData.images[0]);
+    }
   }, [id]);
 
+  // Handle Check Availability
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       const response = await fetch(
         `http://localhost:3000/api/rooms/check/${selectedRoom}`
@@ -116,7 +127,6 @@ const RoomDetails = () => {
         return;
       }
 
-      // Open modal with calendar
       setIsOpen(true);
     } catch (error) {
       console.error(error);
@@ -139,7 +149,7 @@ const RoomDetails = () => {
         </div>
 
         {/* Room Rating */}
-        <div className="flex flex-row ">
+        <div className="flex flex-row">
           <StarRating />
           <p className="ml-2 text-sm font-inter">200+ Reviews</p>
         </div>
@@ -153,6 +163,7 @@ const RoomDetails = () => {
               className="w-full rounded-xl shadow-lg object-cover"
             />
           </div>
+
           <div className="grid grid-cols-2 gap-4 w-full lg:w-1/2">
             {room?.images.length > 1 &&
               room.images.map((image, index) => (
@@ -175,8 +186,7 @@ const RoomDetails = () => {
             <h1 className="text-4xl font-playfair">
               Experience Luxury Like Never Before
             </h1>
-
-            <div className="flex flex-wrap ">
+            <div className="flex flex-wrap">
               {room.amenities.map((item, index) => (
                 <div
                   key={index}
@@ -197,13 +207,13 @@ const RoomDetails = () => {
           <p className="text-2xl font-medium">₱{room.pricePerNight}/night</p>
         </div>
 
-        {/* Check In/Out */}
+        {/* Check In/Out Form */}
         <form
           onSubmit={handleSubmit}
           className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white shadow-[0px_0px_20px_rgba(0,0,0,0.15)] rounded-xl p-6 mx-auto mt-16 max-w-6xl"
         >
           <div className="flex flex-col flex-wrap md:flex-row items-start md:items-center gap-4 md:gap-10 text-gray-500">
-            {/* Adults Input */}
+            {/* Adults */}
             <div className="flex flex-col">
               <label htmlFor="adults" className="font-medium">
                 Adults
@@ -217,9 +227,10 @@ const RoomDetails = () => {
               />
             </div>
 
+            {/* Divider */}
             <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
 
-            {/* Children Input */}
+            {/* Children */}
             <div className="flex flex-col">
               <label htmlFor="children" className="font-medium">
                 Children
@@ -233,9 +244,10 @@ const RoomDetails = () => {
               />
             </div>
 
+            {/* Divider */}
             <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
 
-            {/* Room Number Input */}
+            {/* Room Number */}
             <div className="flex flex-col">
               <label htmlFor="guests" className="font-medium">
                 Room Number
@@ -265,6 +277,7 @@ const RoomDetails = () => {
           </button>
         </form>
 
+        {/* Date Picker Modal */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
@@ -286,12 +299,12 @@ const RoomDetails = () => {
 
                 <div className="rounded-lg border border-gray-200 overflow-hidden">
                   <DateRange
-                    editableDateInputs={true}
+                    editableDateInputs
                     onChange={(item) => setRange([item.selection])}
                     moveRangeOnFirstSelection={false}
                     moveRangeBackwards={false}
                     ranges={range}
-                    rangeColors={["#4F46E5"]} // primary color highlight
+                    rangeColors={["#4F46E5"]}
                   />
                 </div>
 
@@ -313,6 +326,8 @@ const RoomDetails = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Confirm Modal */}
         <AnimatePresence>
           {showConfirmModal && (
             <motion.div
@@ -339,7 +354,7 @@ const RoomDetails = () => {
                   </button>
                   <button
                     onClick={() => {
-                      handleConfirm(); // ✅ Actually confirm booking
+                      handleConfirm();
                       setShowConfirmModal(false);
                       setIsOpen(false);
                     }}
@@ -353,14 +368,11 @@ const RoomDetails = () => {
           )}
         </AnimatePresence>
 
+        {/* Room Common Data */}
         <div className="mt-15 space-y-5">
           {roomCommonData.map((spec, index) => (
             <div key={index} className="flex items-start gap-2">
-              <img
-                src={spec.icon}
-                alt={`${spec.title} -icon`}
-                className="w-6.5"
-              />
+              <img src={spec.icon} alt={`${spec.title}-icon`} className="w-6.5" />
               <div>
                 <p className="text-base">{spec.title}</p>
                 <p className="text-gray-500">{spec.description}</p>
@@ -369,13 +381,14 @@ const RoomDetails = () => {
           ))}
         </div>
 
+        {/* Description */}
         <div className="max-w-3xl border-y border-gray-300 my-15 py-10 text-gray-500">
           <p>
-            Discover the perfect blend of luxury and comfort at Rosario Resort
-            and Hotel. Our provincial resort offers a unique escape, where
-            modern amenities meet the vibrant energy of urban life. Whether
-            you're here for business or leisure, we ensure an unforgettable stay
-            with exceptional service and stunning surroundings.
+            Discover the perfect blend of luxury and comfort at Rosario Resort and
+            Hotel. Our provincial resort offers a unique escape, where modern
+            amenities meet the vibrant energy of urban life. Whether you're here
+            for business or leisure, we ensure an unforgettable stay with
+            exceptional service and stunning surroundings.
           </p>
         </div>
 
@@ -398,6 +411,7 @@ const RoomDetails = () => {
             </div>
           </div>
         </div>
+
         <button>Contact Now</button>
       </div>
     )

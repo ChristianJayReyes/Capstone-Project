@@ -51,6 +51,7 @@ export const createBooking = async (req, res) => {
     const {
       email,
       roomId,
+      roomNumber,
       checkInDate,
       checkOutDate,
       guests,
@@ -74,14 +75,14 @@ export const createBooking = async (req, res) => {
     // ✅ Check if the room is already booked within the selected range
     const [existingBookings] = await db.query(
       `SELECT * FROM bookings
-       WHERE room_type_id = ?
+       WHERE room_number = ?
        AND (
          (check_in <= ? AND check_out >= ?) OR
          (check_in <= ? AND check_out >= ?) OR
          (? <= check_in AND ? >= check_out)
        )`,
       [
-        roomId,
+        roomNumber,
         formattedCheckIn,
         formattedCheckIn,
         formattedCheckOut,
@@ -101,12 +102,12 @@ export const createBooking = async (req, res) => {
     // ✅ Insert new booking record
     const [result] = await db.query(
       `INSERT INTO bookings 
-        (user_id, email, room_type_id, check_in, check_out, adults, children, total_price, payment_status, status) 
+        (user_id, room_type_id, room_number, check_in, check_out, adults, children, total_price, payment_status, status) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.user_id || null,
-        email,
         roomId,
+        roomNumber,
         formattedCheckIn,
         formattedCheckOut,
         adults,
@@ -126,6 +127,7 @@ export const createBooking = async (req, res) => {
         user_id: req.user.user_id || null,
         user_email: req.user.email,
         room_type_id: roomId,
+        room_number: roomNumber,
         check_in: formattedCheckIn,
         check_out: formattedCheckOut,
         adults,
@@ -137,23 +139,29 @@ export const createBooking = async (req, res) => {
 
     // Send email to the user
     // const pool = await connectDB();
-    // const [roomRows] = await pool.query(
-    //   "SELECT name FROM rooms WHERE room_type_id=?",
-    //   [roomId]
-    // );
-    // const roomName = roomRows.length > 0 ? roomRows[0].name : "Unknown Room";
+    const [roomRows] = await db.query(
+      `SELECT rt.type_name AS roomName
+      FROM rooms r
+      JOIN room_types rt ON r.room_type_id = rt.room_type_id
+      WHERE r.room_type_id = ?`,
+      [roomId]
+    );
+
+    const roomName = roomRows[0]?.roomName || "Unknown Room";
 
     const reservationDetails = {
       bookingId: result.insertId,
       checkInDate: formattedCheckIn,
       checkOutDate: formattedCheckOut,
-      roomType: roomId,
+      roomId,
+      roomName, // ✅ Now it’s the actual readable name like “Dormitory Room”
       totalPrice,
       guests: {
         adults,
-        children, 
+        children,
       },
     };
+
     await sendReservationEmail(email, reservationDetails);
   } catch (error) {
     console.error("❌ Error creating booking:", error);

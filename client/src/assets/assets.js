@@ -381,7 +381,7 @@ export const userDummyData = {
 // Hotel Dummy Data
 export const hotelDummyData = [
   {
-    _id: "01",
+    _id: "4",
     name: "Deluxe Queen",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -392,7 +392,7 @@ export const hotelDummyData = [
     roomNumbers: ["101", "102", "103", "104", "105"],
   },
   {
-    _id: "02",
+    _id: "5",
     name: "Deluxe Twin",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -403,7 +403,7 @@ export const hotelDummyData = [
     roomNumbers: ["201", "202", "203", "204", "205"],
   },
   {
-    _id: "03",
+    _id: "1",
     name: "Dormitory Room",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -413,7 +413,7 @@ export const hotelDummyData = [
     __v: 0,
   },
   {
-    _id: "04",
+    _id: "8",
     name: "Family Room",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -423,7 +423,7 @@ export const hotelDummyData = [
     __v: 0,
   },
   {
-    _id: "05",
+    _id: "6",
     name: "Presidential Queen",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -433,7 +433,7 @@ export const hotelDummyData = [
     __v: 0,
   },
   {
-    _id: "06",
+    _id: "7",
     name: "Presidential Twin",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -443,7 +443,7 @@ export const hotelDummyData = [
     __v: 0,
   },
   {
-    _id: "07",
+    _id: "2",
     name: "Superior Queen",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -453,7 +453,7 @@ export const hotelDummyData = [
     __v: 0,
   },
   {
-    _id: "08",
+    _id: "3",
     name: "Superior Twin",
     address: "Brgy. Quilib, Rosario, Batangas",
     contact: "+0123456789",
@@ -468,7 +468,7 @@ export const hotelDummyData = [
 // Rooms Dummy Data
 export const roomsDummyData = [
   {
-    _id: "01",
+    _id: "4",
     hotel: hotelDummyData[0],
     roomType: "Single Bed",
     pricePerNight: 3000,
@@ -480,7 +480,7 @@ export const roomsDummyData = [
     __v: 0,
   },
   {
-    _id: "02",
+    _id: "5",
     hotel: hotelDummyData[1],
     roomType: "Double Bed",
     pricePerNight: 3500,
@@ -492,7 +492,7 @@ export const roomsDummyData = [
     __v: 0,
   },
   {
-    _id: "03",
+    _id: "1",
     hotel: hotelDummyData[2],
     roomType: "Family Room",
     pricePerNight: 4000,
@@ -504,7 +504,7 @@ export const roomsDummyData = [
     __v: 0,
   },
   {
-    _id: "04",
+    _id: "8",
     hotel: hotelDummyData[3],
     roomType: "Family Room",
     pricePerNight: 4500,
@@ -516,7 +516,7 @@ export const roomsDummyData = [
     __v: 0,
   },
   {
-    _id: "05",
+    _id: "6",
     hotel: hotelDummyData[4],
     roomType: "Luxury Room",
     pricePerNight: 4500,
@@ -528,7 +528,7 @@ export const roomsDummyData = [
     __v: 0,
   },
   {
-    _id: "06",
+    _id: "7",
     hotel: hotelDummyData[5],
     roomType: "Luxury Room",
     pricePerNight: 4500,
@@ -540,7 +540,7 @@ export const roomsDummyData = [
     __v: 0,
   },
   {
-    _id: "07",
+    _id: "2",
     hotel: hotelDummyData[6],
     roomType: "Luxury Room",
     pricePerNight: 4500,
@@ -552,7 +552,7 @@ export const roomsDummyData = [
     __v: 0,
   },
   {
-    _id: "08",
+    _id: "3",
     hotel: hotelDummyData[7],
     roomType: "Luxury Room",
     pricePerNight: 4500,

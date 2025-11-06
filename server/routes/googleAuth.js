@@ -17,7 +17,7 @@ router.get("/google/callback",
     );
 
     // Redirect with token to frontend
-    res.redirect(`http://localhost:5173/login?token=${token}`);
+    res.redirect(`http://localhost:5173/login?token=${token}`); 
   }
 );
 

@@ -27,7 +27,7 @@ const MyBookings = () => {
         error.response &&
         error.response.data?.message?.includes("jwt expired")
       ) {
-        toast.error("Session expired. Please log in again.");
+        toast.error("Session expired. Please log in again."); 
         localStorage.removeItem("token");
         window.location.href = "/login";
       } else {

@@ -6,6 +6,10 @@ require_once __DIR__ . '/../../helper.php';
 
 try {
     $pdo = get_pdo();
+
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; // Default to page 1 if not set
+    $itemsPerPage = isset($_GET['itemsPerPage']) ? (int)$_GET['itemsPerPage'] : 5; // Default to 5 items per page
+    $offset = ($page - 1) * $itemsPerPage;
     
     // Build WHERE clause based on filters
     $where = [];
@@ -32,6 +36,8 @@ try {
         $where[] = "r.status = :status";
         $params[':status'] = $status;
     }
+
+
     
     // Combine WHERE conditions
     $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -50,6 +56,7 @@ try {
             JOIN room_types rt ON rt.room_type_id = r.room_type_id
             {$whereClause}
             ORDER BY r.room_number";
+            
     
     // Prepare and execute the query
     $stmt = $pdo->prepare($sql);

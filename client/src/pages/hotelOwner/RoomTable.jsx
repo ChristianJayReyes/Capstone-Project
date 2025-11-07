@@ -33,6 +33,7 @@ export default function RoomTable({
   pageCount,
   onPageChange,
   totalCount = 0,
+  ITEMS_PER_PAGE, 
 }) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -176,44 +177,41 @@ export default function RoomTable({
       </div>
 
       {pageCount > 1 && (
-        <div className="flex justify-between items-center px-5 py-3 bg-white border-t border-gray-200">
-          <div className="text-sm text-gray-600">
-            Showing {(currentPage - 1) * 10 + 1}–
-            {Math.min(currentPage * 10, totalCount)} of {totalCount} rooms
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 border rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-            >
-              Prev
-            </button>
+  <div className="flex justify-between items-center px-5 py-3 bg-white border-t border-gray-200">
+    <div className="text-sm text-gray-600">
+      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount} rooms
+    </div>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-1.5 border rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+      >
+        Prev
+      </button>
 
-            {Array.from({ length: pageCount }, (_, i) => i + 1).map((num) => (
-              <button
-                key={num}
-                onClick={() => onPageChange(num)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                  num === currentPage
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {num}
-              </button>
-            ))}
+      {/* Calculate page range to display */}
+      {Array.from({ length: Math.min(4, pageCount - Math.floor((currentPage - 1) / 4) * 4) }, (_, i) => i + Math.floor((currentPage - 1) / 4) * 4 + 1).map((num) => (
+        <button
+          key={num}
+          onClick={() => onPageChange(num)}
+          className={`px-3 py-1.5 rounded-md text-sm font-medium ${num === currentPage ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+        >
+          {num}
+        </button>
+      ))}
 
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage >= pageCount}
-              className="px-3 py-1.5 border rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= pageCount}
+        className="px-3 py-1.5 border rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

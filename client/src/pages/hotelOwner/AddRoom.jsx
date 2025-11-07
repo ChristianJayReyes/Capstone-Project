@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import RoomFormModal from "./AddRoomForm";
 import RoomTable from "./RoomTable";
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 7;
 const API_BASE = import.meta.env.VITE_API_BASE_ROOMS || "http://localhost:8000/api/rooms";
 
 const roomTypesList = [
@@ -448,6 +448,7 @@ const handleBulkDelete = async (ids) => {
           toggleSelectOne={toggleSelectOne}
           isAllSelected={isAllSelected}
           onToggleAvailability={handleToggleAvailability}
+          
           onEdit={(r) => {
   setEditingRoom(r);
   setIsModalOpen(true);
@@ -458,6 +459,7 @@ const handleBulkDelete = async (ids) => {
           currentPage={currentPage}
           pageCount={pageCount}
           onPageChange={setCurrentPage}
+          ITEMS_PER_PAGE={ITEMS_PER_PAGE} 
         />
 
         {/* Modal */}

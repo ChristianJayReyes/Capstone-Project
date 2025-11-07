@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import connectDB from "../configs/db.js";
 import nodemailer from "nodemailer";
 import passport from "passport";
+import fetch from "node-fetch";
 
 const router = express.Router();
 
@@ -48,9 +49,17 @@ router.post("/register", async (req, res) => {
 
 // --- Login ---
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, captcha } = req.body;
 
   try {
+    const secretKey = process.env.CAPTCHA_SECRET_KEY;
+    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captcha}`;
+    const captchaResponse = await fetch(verifyUrl, { method: "POST" });
+    const captchaData = await captchaResponse.json();
+
+    if (!captchaData.success) {
+      return res.status(400).json({ success: false, message: "Captcha verification failed. Please try again."});
+    }
     const db = await connectDB();
     const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [
       email,

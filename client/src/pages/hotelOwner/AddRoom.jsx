@@ -1,495 +1,428 @@
-import React, { useMemo, useState, useEffect } from "react";
-import "../../styles/listroom.css";
+import React, { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import Swal from "sweetalert2"; 
+import RoomFormModal from "./AddRoomForm";
+import RoomTable from "./RoomTable";
 
-const ListRoom = () => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // rooms per page
+const ITEMS_PER_PAGE = 5;
+const API_BASE = import.meta.env.VITE_API_BASE_ROOMS || "http://localhost:8000/api/rooms";
 
+const roomTypesList = [
+  "Dormitory Room",
+  "Superior Queen",
+  "Superior Twin",
+  "Deluxe Queen",
+  "Deluxe Twin",
+  "Presidential Queen",
+  "Presidential Twin",
+  "Family Room",
+];
+
+export default function AddRoom() {
   const [rooms, setRooms] = useState([]);
-  const refetch = async () => {
-    try {
-      const res = await fetch("http://localhost:8000/api/rooms/getRooms.php");
-      const data = await res.json();
-      const roomsArray = data.data || [];
-      const mapped = roomsArray.map((r) => ({
-        _id: r.room_id,
-        roomType: r.type_name,
-        roomTypeId: r.room_type_id, // <-- needed for updates
-        pricePerNight: Number(r.price_per_night) || 0,
-        capacityAdults: r.capacity_adults,
-        capacityChildren: r.capacity_children,
-        status: (r.status || "").toLowerCase(),
-        roomNumber: r.room_number,
-        isAvailable: (r.status || "").toLowerCase() === "available",
-      }));
+  const [loading, setLoading] = useState(false);
 
-      console.log("Raw API data:", data);
-      console.log("Rooms array:", roomsArray);
-      console.log("Mapped rooms:", mapped);
-
-      setRooms(mapped);
-    } catch (e) {
-      console.error("Failed to load rooms", e);
-      alert("Failed to load rooms.");
-      setRooms([]);
-    }
-  };
-
-  useEffect(() => {
-    refetch();
-  }, []);
+  const [search, setSearch] = useState("");
   const [roomTypeFilter, setRoomTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [selectedIds, setSelectedIds] = useState([]);
-  const [showModal, setShowModal] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
-  const [formData, setFormData] = useState({
-    roomNumber: "",
-    roomType: "Dormitory Room",
-    pricePerNight: "",
-    capacityAdults: 1,
-    capacityChildren: 0,
-    status: "available",
-  });
 
-  useEffect(() => {
-    if (editingRoom) {
-      setFormData({
-        roomNumber: editingRoom.roomNumber || "",
-        roomType: editingRoom.roomType || "Dormitory Room",
-        roomTypeId: roomTypeMap[editingRoom.roomType] || 1,
-        pricePerNight: editingRoom.pricePerNight || "",
-        capacityAdults: editingRoom.capacityAdults || 1,
-        capacityChildren: editingRoom.capacityChildren || 0,
-        status: editingRoom.status || "available",
-      });
-    } else {
-      // Reset form when not editing
-      setFormData({
-        roomNumber: "",
-        roomType: "Dormitory Room",
-        roomTypeId: roomTypeMap["Dormitory Room"],
-        pricePerNight: "",
-        capacityAdults: 1,
-        capacityChildren: 0,
-        status: "available",
-      });
-    }
-  }, [editingRoom]);
-
-  const filteredRooms = useMemo(() => {
-    let list = rooms;
-
-    // Filter by room type
-    if (roomTypeFilter !== "all") {
-      const rt = roomTypeFilter.toLowerCase();
-      list = list.filter((r) => (r.roomType || "").toLowerCase() === rt);
-    }
-
-    // Filter by status
-    if (statusFilter !== "all") {
-      const sf = statusFilter.toLowerCase();
-      list = list.filter((r) => {
-        const roomStatus = (
-          r.status || (r.isAvailable ? "available" : "booked")
-        ).toLowerCase();
-        return roomStatus === sf;
-      });
-    }
-
-    // Filter by search query
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (r) =>
-          (r.roomType || "").toLowerCase().includes(q) ||
-          (r.roomNumber || "").toLowerCase().includes(q)
-      );
-    }
-
-    return list;
-  }, [rooms, roomTypeFilter, statusFilter, query]);
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [roomTypeFilter, statusFilter, query]);
-
-  const paginatedRooms = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredRooms.slice(start, start + itemsPerPage);
-  }, [filteredRooms, currentPage]);
-
-  const formatPrice = (value) => `₱${Number(value).toLocaleString()}`;
-  const sliceId = (id) => `#${String(id).slice(-6)}`;
-
-  const handleToggleAvailability = async (id) => {
+  // =================== FETCH ROOMS ===================
+  const fetchRooms = async () => {
+    setLoading(true);
     try {
-      const room = rooms.find((r) => r._id === id);
-      if (!room) return;
+      const params = {};
+      if (search && search.trim() !== "") params.search = search.trim();
+      if (roomTypeFilter !== "all") params.room_type = roomTypeFilter;
+      if (statusFilter !== "all") params.status = statusFilter;
 
-      const nextStatus = room.status === "available" ? "booked" : "available";
+      const res = await axios.get(`${API_BASE}/getRooms.php`, { params, timeout: 15000 });
+      const data = res.data?.data ?? [];
 
-      const res = await fetch(
-        "http://localhost:8000/api/rooms/updateRoom.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            room_id: id,
-            status: nextStatus,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error("Failed to update status:", data);
-        alert(`Failed to update status: ${data.message}`);
-        return;
-      }
-
-      await refetch(); // reload rooms after status update
+      const mapped = data.map((r) => ({
+        room_id: r.room_id,
+        roomNumber: r.room_number,
+        roomType: r.type_name,
+        roomTypeId: r.room_type_id,
+        pricePerNight: Number(r.price_per_night) || 0,
+        capacityAdults: r.capacity_adults ?? 1,
+        capacityChildren: r.capacity_children ?? 0,
+        status: (r.status || "").toLowerCase(),
+        raw: r,
+      }));
+      setRooms(mapped);
+      console.log("Mapped rooms:", mapped);
     } catch (err) {
-      console.error(err);
-      alert("Failed to update room status");
+      console.error("Failed to fetch rooms:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to Load Rooms",
+        text: err?.message || "Please check backend/CORS or API URL.",
+        confirmButtonColor: "#2563eb",
+      });
+      setRooms([]);
+    } finally {
+      setLoading(false);
     }
+    
   };
 
+  useEffect(() => {
+    fetchRooms();
+    setCurrentPage(1);
+  }, [search, roomTypeFilter, statusFilter]);
+
+  // =================== PAGINATION ===================
+  const filteredRoomsMemo = useMemo(() => rooms, [rooms]);
+  const pageCount = Math.max(1, Math.ceil(filteredRoomsMemo.length / ITEMS_PER_PAGE));
+  const paginatedRooms = filteredRoomsMemo.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    (currentPage - 1) * ITEMS_PER_PAGE + ITEMS_PER_PAGE
+  );
+
+  // =================== SELECTION HELPERS ===================
   const isAllSelected =
-    filteredRooms.length > 0 &&
-    filteredRooms.every((r) => selectedIds.includes(r._id));
+    filteredRoomsMemo.length > 0 && filteredRoomsMemo.every((r) => selectedIds.includes(r.room_id));
+
   const toggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedIds((prev) =>
-        prev.filter((id) => !filteredRooms.some((r) => r._id === id))
-      );
-    } else {
-      const addIds = filteredRooms.map((r) => r._id);
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...addIds])));
-    }
+    if (isAllSelected) setSelectedIds([]);
+    else setSelectedIds(filteredRoomsMemo.map((r) => r.room_id));
   };
 
-  const toggleSelectOne = (id) => {
+  const toggleSelectOne = (id) =>
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
-  };
 
-  const openAddModal = () => {
-    setEditingRoom(null);
-    setFormData({
-      roomNumber: "",
-      roomType: "Dormitory Room",
-      roomTypeId: roomTypeMap["Dormitory Room"],
-      pricePerNight: "",
-      capacityAdults: 1,
-      capacityChildren: 0,
-      status: "available",
-    });
-    setShowModal(true);
-  };
+  // =================== TOGGLE STATUS ===================
+  const handleToggleAvailability = async (id, currentStatus) => {
+    const next = currentStatus === "available" ? "booked" : "available";
+    setRooms((prev) => prev.map((r) => (r.room_id === id ? { ...r, status: next } : r)));
 
-  const openEditModal = (room) => {
-    setEditingRoom(room);
-    setFormData({
-      roomNumber: room.roomNumber,
-      roomType: room.roomType,
-      roomTypeId: roomTypeMap[room.roomType], // <- ensure ID is set
-      pricePerNight: room.pricePerNight,
-      capacityAdults: room.capacityAdults || 1,
-      capacityChildren: room.capacityChildren || 0,
-      status: room.status || "available",
-    });
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingRoom(null);
-    setFormData({
-      roomNumber: "",
-      roomType: "Dormitory Room",
-      pricePerNight: "",
-      capacityAdults: 1,
-      capacityChildren: 0,
-      status: "available",
-    });
-  };
-
-  const roomTypeMap = {
-    "Dormitory Room": 1,
-    "Superior Queen": 2,
-    "Superior Twin": 3,
-    "Deluxe Queen": 4,
-    "Deluxe Twin": 5,
-    "Presidential Queen": 6,
-    "Presidential Twin": 7,
-    "Family Room": 8,
-  };
-
-  const roomTypes = ["all", ...Object.keys(roomTypeMap)];
-
-  const capitalize = (str = "") => str.charAt(0).toUpperCase() + str.slice(1);
-
-  const handleSave = async (isUpdate = false, roomId = null) => {
     try {
-      const BASE_URL = "http://localhost:8000/api/rooms";
+      await axios.post(
+        `${API_BASE}/updateRoom.php`,
+        { room_id: id, status: next },
+        { headers: { "Content-Type": "application/json" }, timeout: 15000 }
+      );
+    } catch (e) {
+      console.error("Toggle availability failed:", e);
+      Swal.fire({
+        icon: "error",
+        title: "Status Update Failed",
+        text: e.message,
+        confirmButtonColor: "#2563eb",
+      });
+      // rollback
+      setRooms((prev) => prev.map((r) => (r.room_id === id ? { ...r, status: currentStatus } : r)));
+    }
+  };
 
-      // Validation
-      if (!formData.roomNumber.trim()) {
-        alert("Please enter a room number");
-        return;
-      }
-      if (!formData.roomTypeId && !formData.roomType) {
-        alert("Please select a valid room type");
-        return;
-      }
+ // =================== DELETE SINGLE ROOM ===================
+const handleDeleteRoom = async (id) => {
+  console.log("Deleting room with ID:", id);
 
-      // Get roomTypeId (from map or directly)
-      const roomTypeId = formData.roomTypeId || roomTypeMap[formData.roomType];
+  // Validate room ID
+  if (!id) {
+    return Swal.fire({
+      icon: "error",
+      title: "Invalid Room ID",
+      text: "Please select a valid room to delete.",
+      confirmButtonColor: "#2563eb",
+    });
+  }
 
-      // Build payload
-      const payload = {
-        room_number: formData.roomNumber,
-        room_type_id: roomTypeId,
-        status: formData.status || "available",
-        type_name: formData.roomType, // 🔹 for room_types table
-        price_per_night: formData.pricePerNight, // 🔹 for room_types table
-        capacity_adults: formData.capacityAdults, // 🔹 for room_types table
-        capacity_children: formData.capacityChildren, // 🔹 for room_types table
-      };
+  // Confirmation dialog
+  const confirmDelete = await Swal.fire({
+    icon: "warning",
+    title: "Delete Room?",
+    text: "Are you sure you want to delete this room? This action cannot be undone.",
+    showCancelButton: true,
+    confirmButtonColor: "#dc2626",
+    cancelButtonColor: "#6b7280", 
+    confirmButtonText: "Yes, delete it",
+    cancelButtonText: "Cancel",
+    reverseButtons: true,
+    customClass: {
+      popup: "rounded-2xl shadow-lg",
+      title: "font-semibold text-lg",
+      htmlContainer: "text-gray-600",
+      confirmButton: "px-4 py-2 text-sm font-medium",
+      cancelButton: "px-4 py-2 text-sm font-medium",
+    },
+  });
 
-      if (isUpdate) {
-        payload.room_id = roomId; // include ID for updates
-      }
+  if (!confirmDelete.isConfirmed) return;
 
-      const url = isUpdate
-        ? `${BASE_URL}/updateRoom.php`
-        : `${BASE_URL}/addRoom.php`;
+  try {
+    // Show loading state
+    Swal.fire({
+      title: "Deleting Room...",
+      text: "Please wait a moment.",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    // Send delete request
+    const res = await axios.post(
+      `${API_BASE}/deleteRoom.php`,
+      { room_id: id },
+      { timeout: 10000 }
+    );
+
+    //  Handle success
+    if (res.data?.success) {
+      Swal.fire({
+        icon: "success",
+        title: "Room Deleted",
+        text: res.data.message || "The room was successfully removed.",
+        confirmButtonColor: "#2563eb",
+        timer: 1500,
+        showConfirmButton: false,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error("Failed to save room:", data);
-        alert(`Failed to save room: ${data.message || "Unknown error"}`);
-        return;
-      }
-
-      alert(data.message || "Room saved successfully");
-      await refetch(); // refresh the room list
-      closeModal(); // close the modal
-    } catch (err) {
-      console.error("Error saving room:", err);
-      alert("An error occurred while saving the room");
+      await fetchRooms();
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Delete Failed",
+        text: res.data?.message || "Room deletion failed. Please try again.",
+        confirmButtonColor: "#2563eb",
+      });
     }
-  };
+  } catch (error) {
+    console.error("Delete failed:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Error Deleting Room",
+      text: error?.message || "A server error occurred. Please try again later.",
+      confirmButtonColor: "#2563eb",
+    });
+  }
+};
 
-  // Central delete function for single or multiple rooms
-  const deleteRooms = async (ids) => {
-    if (!ids || ids.length === 0) return;
 
-    try {
-      const response = await fetch(
-        "http://localhost:8000/api/rooms/deleteBulk.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids }),
-        }
-      );
 
-      const data = await response.json();
-      if (!data.success) throw new Error(data.message || "Failed to delete");
 
-      // Remove deleted rooms locally
-      setRooms((prev) => prev.filter((r) => !ids.includes(r._id)));
-      setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
+  // =================== BULK DELETE ===================
+const handleBulkDelete = async (ids) => {
+  if (!ids || ids.length === 0) {
+    console.log("No rooms selected for deletion.");
+    return;
+  }
 
-      alert(data.message);
-    } catch (e) {
-      console.error("Failed to delete rooms", e);
-      alert("Failed to delete rooms: " + e.message);
-    }
-  };
+  // Log the ids to ensure they are populated
+  console.log("Selected room IDs to delete:", ids);
 
-  // Single room delete now uses the same deleteRooms function
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this room?")) return;
-    await deleteRooms([id]);
-  };
+  const confirmBulk = await Swal.fire({
+    icon: "warning",
+    title: `Delete ${ids.length} rooms?`,
+    text: "This action cannot be undone.",
+    showCancelButton: true,
+    confirmButtonColor: "#dc2626",
+    cancelButtonColor: "#6b7280",
+    confirmButtonText: "Yes, delete all",
+  });
 
-  // Bulk delete uses the same function
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    if (
-      !window.confirm(
-        `Are you sure you want to delete ${selectedIds.length} room(s)?`
-      )
-    )
-      return;
+  if (!confirmBulk.isConfirmed) return;
 
-    await deleteRooms(selectedIds);
-  };
+  const prev = rooms;
+  setRooms((prevRooms) => prevRooms.filter((r) => !ids.includes(r.room_id)));
 
+  try {
+    const res = await axios.post(`${API_BASE}/deleteRoom.php`, { room_ids: ids }, { timeout: 10000 });
+
+    if (!res.data?.success) throw new Error(res.data?.message || "Bulk delete failed");
+
+    setSelectedIds([]);
+    Swal.fire({
+      icon: "success",
+      title: "Rooms Deleted",
+      text: res.data?.message || "All selected rooms were deleted.",
+      confirmButtonColor: "#2563eb",
+    });
+  } catch (e) {
+    console.error("Bulk delete failed:", e);
+    setRooms(prev);
+    Swal.fire({
+      icon: "error",
+      title: "Failed to Delete",
+      text: e?.message || "Server error occurred.",
+      confirmButtonColor: "#2563eb",
+    });
+  }
+};
+
+
+  // =================== VIEW BOOKING INFO ===================
   const handleViewBooking = async (room) => {
-    if (room.status !== "booked") {
-      alert("Room is not occupied.");
-      return;
-    }
-
     try {
-      const res = await fetch(`/api/bookings/room/${room._id}`);
-      const data = await res.json();
+      const res = await axios.get(`${API_BASE}/getRoomGuests.php`, {
+        params: { room_id: room._id },
+        timeout: 10000,
+      });
+      setEditingRoom({ ...room, booking: res.data?.data ?? null });
+      setIsModalOpen(true);
+    } catch (e) {
+      console.error("Failed to load booking info:", e);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to Load Booking Info",
+        text: e.message,
+        confirmButtonColor: "#2563eb",
+      });
+    }
+  };
 
-      if (data.success && data.booking) {
-        setEditingRoom({ ...room, booking: data.booking });
-        setShowModal(true);
+  // =================== ADD ROOM (SweetAlert) ===================
+ const handleAddRoom = async (payload) => {
+  try {
+    const formatted = {
+      room_number: payload.room_number || payload.roomNumber,
+      room_type_id: payload.room_type_id ?? payload.roomTypeId ?? null,
+      room_type: payload.room_type ?? payload.roomType ?? "Dormitory Room", // ✅ fallback
+      price_per_night: payload.price_per_night ?? payload.pricePerNight ?? 0,
+      capacity_adults: payload.capacity_adults ?? payload.capacityAdults ?? 0,
+      capacity_children: payload.capacity_children ?? payload.capacityChildren ?? 0,
+      status: payload.status ?? "Available",
+    };
+
+    const res = await axios.post(`${API_BASE}/addRoom.php`, formatted, {
+      headers: { "Content-Type": "application/json" }, // ✅ JSON header
+    });
+
+    console.log("Response:", res.data);
+
+    if (res.data?.success) {
+      Swal.fire({
+        icon: "success",
+        title: "Room Added",
+        text: res.data.message,
+        confirmButtonColor: "#2563eb",
+      });
+
+      await fetchRooms(); // ✅ Refresh list instantly
+      return true;
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: res.data?.message || "Failed to add room.",
+        confirmButtonColor: "#2563eb",
+      });
+      return false;
+    }
+  } catch (e) {
+    console.error("Add room error:", e.response?.data || e.message);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: e.response?.data?.message || e.message || "Connection error.",
+      confirmButtonColor: "#2563eb",
+    });
+    return false;
+  }
+};
+
+
+  // =================== SAVE BOOKING NOTES ===================
+  const handleSaveBookingNotes = async (bookingId, notes) => {
+    try {
+      const res = await axios.post(
+        `${API_BASE}/../bookings/updateBookingStatus.php`,
+        { booking_id: bookingId, action: "update_notes", notes },
+        { timeout: 10000 }
+      );
+      if (res.data?.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Notes Saved",
+          text: res.data?.message || "Notes updated successfully.",
+          confirmButtonColor: "#2563eb",
+        });
       } else {
-        alert("No booking information found.");
+        throw new Error(res.data?.message || "Failed");
       }
     } catch (e) {
-      console.error("Failed to load booking info", e);
-      alert("Failed to load booking info");
+      console.error("Save notes failed:", e);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to Save Notes",
+        text: e.message,
+        confirmButtonColor: "#2563eb",
+      });
     }
   };
 
-  const getStatusConfig = (status) => {
-    switch (status) {
-      case "available":
-        return {
-          color: "bg-green-100 text-green-700 border-green-200",
-          label: "Available",
-        };
-      case "booked":
-        return {
-          color: "bg-red-100 text-red-700 border-red-200",
-          label: "Booked",
-        };
-      case "maintenance":
-        return {
-          color: "bg-yellow-100 text-yellow-700 border-yellow-200",
-          label: "Maintenance",
-        };
-      default:
-        return {
-          color: "bg-gray-100 text-gray-700 border-gray-200",
-          label: "Unknown",
-        };
-    }
-  };
-
+  // =================== RENDER ===================
   return (
-    <div className="w-full bg-white-50 min-h-screen font-['Poppins']">
+    <div className="w-full min-h-screen font-poppins bg-white">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Page Header */}
+        {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">
-                Room Management
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Manage and track all room information
-              </p>
+              <h1 className="text-2xl font-bold text-gray-800">Room Management</h1>
+              <p className="text-gray-600 mt-1">Manage and track all room information</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              {selectedIds.length > 0 && (
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                  Delete Selected ({selectedIds.length})
-                </button>
-              )}
               <button
-                onClick={openAddModal}
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center gap-2 shadow-lg font-semibold"
+                onClick={() => {
+                  setEditingRoom(null);
+                  setIsModalOpen(true);
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-lg hover:from-blue-600 hover:to-blue-700 transition-all"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Add New Room
+                + Add New Room
               </button>
             </div>
           </div>
         </div>
 
-        {/* Search and Filter Section */}
+        {/* Filters */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
               <input
                 type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search room number..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
-            {/* Room Type Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Room Type
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Room Type</label>
               <select
-                value={roomTypeFilter} // bind to filter state
-                onChange={(e) => setRoomTypeFilter(e.target.value)} // update filter state
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700 bg-white"
+                value={roomTypeFilter}
+                onChange={(e) => setRoomTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
               >
-                <option value="all">All Room Types</option> {/* show all */}
-                {Object.keys(roomTypeMap).map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                <option value="all">All Room Types</option>
+                {roomTypesList.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700 bg-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
               >
                 <option value="all">All Status</option>
                 <option value="available">Available</option>
@@ -497,448 +430,98 @@ const ListRoom = () => {
                 <option value="maintenance">Maintenance</option>
               </select>
             </div>
-          </div>
-        </div>
 
-        {/* Rooms Display */}
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="p-4 border-b border-gray-200 text-gray-700 font-medium">
-              Showing {rooms.length} room{rooms.length !== 1 ? "s" : ""}
+            <div className="flex items-end">
+              <div className="text-sm text-gray-600">
+                Showing {rooms.length} room{rooms.length !== 1 ? "s" : ""}
+              </div>
             </div>
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={isAllSelected}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 accent-blue-600"
-                    />
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    Room ID
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    Room Number
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    Room Type
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    Price per Night
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    Capacity
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    Status
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    View
-                  </th>
-                  <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {paginatedRooms.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-gray-500">
-                      <div className="flex flex-col items-center gap-2">
-                        <svg
-                          className="w-12 h-12 text-gray-300"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                          />
-                        </svg>
-                        <p className="text-lg font-medium">No rooms found</p>
-                        <p className="text-sm">
-                          Try adjusting your search or filter criteria
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedRooms.map((room) => {
-                    const statusConfig = getStatusConfig(
-                      room.status || (room.isAvailable ? "available" : "booked")
-                    );
-                    return (
-                      <tr
-                        key={room._id}
-                        className="hover:bg-blue-50 transition-colors"
-                      >
-                        <td className="py-4 px-6">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 accent-blue-600"
-                            checked={selectedIds.includes(room._id)}
-                            onChange={() => toggleSelectOne(room._id)}
-                          />
-                        </td>
-
-                        <td className="py-4 px-6 text-sm text-gray-900 font-medium">
-                          {sliceId(room._id)}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-gray-900 font-medium">
-                          {room.roomNumber}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-gray-900 font-medium">
-                          {room.roomType}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-gray-900 font-medium">
-                          {formatPrice(room.pricePerNight)}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-gray-900">
-                          {room.capacityAdults || 1} Adults,{" "}
-                          {room.capacityChildren || 0} Children
-                        </td>
-                        <td className="py-4 px-6">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${statusConfig.color}`}
-                          >
-                            {statusConfig.label}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          {room.status === "booked" ? (
-                            <button
-                              onClick={() => handleViewBooking(room)}
-                              className="w-8 h-8 inline-flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
-                              title="View Booking"
-                            >
-                              <svg
-                                className="w-5 h-5 text-gray-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                />
-                              </svg>
-                            </button>
-                          ) : (
-                            <span className="text-gray-400 text-sm">—</span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openEditModal(room)}
-                              className="w-8 h-8 inline-flex items-center justify-center rounded hover:bg-blue-100 transition-colors"
-                              title="Edit Room"
-                            >
-                              <svg
-                                className="w-4 h-4 text-blue-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => handleDelete(room._id)}
-                              className="w-8 h-8 inline-flex items-center justify-center rounded hover:bg-red-100 transition-colors"
-                              title="Delete Room"
-                            >
-                              <svg
-                                className="w-4 h-4 text-red-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
           </div>
         </div>
-        {/* Pagination Footer */}
-        <div className="flex justify-between items-center px5 py-3 bg-white-50 ">
-          <div className="text-sm text-gray-600">
-            Page {currentPage} of{" "}
-            {Math.max(Math.ceil(filteredRooms.length / itemsPerPage), 1)} |
-            Showing {paginatedRooms.length} of {filteredRooms.length}
-          </div>
 
-          <div className="flex gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <button
-              disabled={
-                currentPage >= Math.ceil(filteredRooms.length / itemsPerPage) ||
-                filteredRooms.length === 0
-              }
-              onClick={() => setCurrentPage((p) => p + 1)}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        {/* Table */}
+        <RoomTable
+          rooms={paginatedRooms}
+          loading={loading}
+          selectedIds={selectedIds}
+          toggleSelectAll={toggleSelectAll}
+          toggleSelectOne={toggleSelectOne}
+          isAllSelected={isAllSelected}
+          onToggleAvailability={handleToggleAvailability}
+          onEdit={(r) => {
+  setEditingRoom(r);
+  setIsModalOpen(true);
+}}
+
+          onDelete={handleDeleteRoom}
+          onViewBooking={handleViewBooking}
+          currentPage={currentPage}
+          pageCount={pageCount}
+          onPageChange={setCurrentPage}
+        />
+
+        {/* Modal */}
+        {isModalOpen && (
+          <RoomFormModal
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setEditingRoom(null);
+            }}
+            initialData={editingRoom}
+            
+            onAdd={handleAddRoom}
+            onUpdate={async (id, payload) => {
+  try {
+    // Convert camelCase → snake_case
+    const formatted = {
+      room_id: id,
+      room_number: payload.room_number || payload.roomNumber,
+      room_type_id: payload.room_type_id || payload.roomTypeId,
+      status: payload.status || "Available",
+    };
+
+    console.log("Updating room:", formatted);
+
+    const res = await axios.post(`${API_BASE}/updateRoom.php`, formatted, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (res.data?.success) {
+      await fetchRooms(); // refresh UI
+      Swal.fire({
+        icon: "success",
+        title: "Room Updated",
+        text: res.data?.message || "Update successful.",
+        confirmButtonColor: "#2563eb",
+      });
+      return true;
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Update Failed",
+        text: res.data?.message || "Room not updated.",
+        confirmButtonColor: "#2563eb",
+      });
+      return false;
+    }
+  } catch (e) {
+    console.error("Update room error:", e);
+    Swal.fire({
+      icon: "error",
+      title: "Failed to Update",
+      text: e.message,
+      confirmButtonColor: "#2563eb",
+    });
+    return false;
+  }
+}}
+
+
+            onSaveBookingNotes={handleSaveBookingNotes}
+          />
+        )}
       </div>
-
-      {/* Add/Edit Room Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingRoom ? "Edit Room" : "Add New Room"}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4">
-              {editingRoom?.booking ? (
-                // === Booking Info View ===
-                <div className="space-y-2">
-                  <p>
-                    <strong>Room Number:</strong> {editingRoom.roomNumber}
-                  </p>
-                  <p>
-                    <strong>Occupied By:</strong>{" "}
-                    {editingRoom.booking.customer_name}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {editingRoom.booking.email}
-                  </p>
-                  <p>
-                    <strong>Phone:</strong> {editingRoom.booking.phone}
-                  </p>
-                  <p>
-                    <strong>Check-in:</strong> {editingRoom.booking.check_in}
-                  </p>
-                  <p>
-                    <strong>Check-out:</strong> {editingRoom.booking.check_out}
-                  </p>
-                </div>
-              ) : (
-                // === Add/Edit Form ===
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Room Number
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.roomNumber}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            roomNumber: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                        placeholder="Enter room number"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Room Type
-                      </label>
-                      <select
-                        value={formData.roomType}
-                        onChange={(e) => {
-                          const type = e.target.value;
-                          setFormData((prev) => ({
-                            ...prev,
-                            roomType: type,
-                            roomTypeId: roomTypeMap[type],
-                          }));
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700 bg-white"
-                        disabled={!!editingRoom} // 🔹 disabled in edit mode
-                      >
-                        {Object.keys(roomTypeMap).map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Price per Night
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.pricePerNight}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            pricePerNight: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                        placeholder="0"
-                        disabled={!!editingRoom} // 🔹 disabled in edit mode
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Status
-                      </label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            status: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                      >
-                        <option value="available">Available</option>
-                        <option value="booked">Booked</option>
-                        <option value="maintenance">Maintenance</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Capacity (Adults)
-                      </label>
-                      <select
-                        value={formData.capacityAdults}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            capacityAdults: Number(e.target.value),
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                        disabled={!!editingRoom} // 🔹 disabled in edit mode
-                      >
-                        {[1, 2, 3, 4, 5, 6].map((num) => (
-                          <option key={num} value={num}>
-                            {num}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Capacity (Children)
-                      </label>
-                      <select
-                        value={formData.capacityChildren}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            capacityChildren: Number(e.target.value),
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                        disabled={!!editingRoom} // 🔹 disabled in edit mode
-                      >
-                        {[0, 1, 2, 3, 4].map((num) => (
-                          <option key={num} value={num}>
-                            {num}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end p-6 border-t border-gray-200 gap-3">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              {!editingRoom?.booking && (
-                <button
-                  onClick={() => handleSave(!!editingRoom, editingRoom?._id)}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold"
-                >
-                  {editingRoom ? "Update Room" : "Save Room"}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-};
-
-export default ListRoom;
+}

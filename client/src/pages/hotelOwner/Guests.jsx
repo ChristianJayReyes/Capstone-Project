@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -91,7 +90,7 @@ const Guests = () => {
 
   return (
     <div className="w-full bg-white min-h-screen font-['Poppins']">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7x2 mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between py-4">
           <div>

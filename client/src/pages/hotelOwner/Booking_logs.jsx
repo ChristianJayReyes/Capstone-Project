@@ -41,9 +41,9 @@ const BookingLogs = () => {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch('/api/booking-logs');
+        const res = await fetch('http://localhost:8000/api/logs/getBookingLogs.php');
         const data = await res.json();
-        const mapped = (Array.isArray(data) ? data : []).map((l, idx) => ({
+        const mapped = (Array.isArray(data.data) ? data.data : []).map((l, idx) => ({
           id: l.log_id ?? idx,
           logId: String(l.log_id ?? idx),
           bookingId: String(l.booking_id ?? ''),
@@ -146,7 +146,7 @@ const BookingLogs = () => {
     if (dateRange.end) params.append('date_to', dateRange.end);
     
     // Open export URL
-    window.open(`/api/booking_logs/export?${params.toString()}`, '_blank');
+    window.open(`http://localhost:8000/api/logs/exportBookingLogs.php?${params.toString()}`, '_blank');
   };
 
   const openDetailsModal = (log) => {

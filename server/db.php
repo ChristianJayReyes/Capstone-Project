@@ -46,100 +46,62 @@ function get_pdo(): PDO {
             'message' => 'Database connection failed',
             'error' => $e->getMessage()
         ]);
+        throw $e; // Unreachable, but satisfies static analysis.
     }
 }
-
-
-// Create tables if they don't exist
-function create_tables(): void {
-    $pdo = get_pdo();
-    
-    $tables = [
-        'users' => "
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INT AUTO_INCREMENT PRIMARY KEY,
-                full_name VARCHAR(255) NOT NULL,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                phone VARCHAR(20),
-                password VARCHAR(255),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                photo VARCHAR(500),
-                reset_token VARCHAR(255),
-                reset_expires TIMESTAMP NULL,
-                verified BOOLEAN DEFAULT FALSE,
-                verification_token VARCHAR(255),
-                otp VARCHAR(6),
-                otp_expires TIMESTAMP NULL,
-                role ENUM('guest', 'admin') DEFAULT 'guest'
-            )
-        ",
-        'room_types' => "
-            CREATE TABLE IF NOT EXISTS room_types (
-                room_type_id INT AUTO_INCREMENT PRIMARY KEY,
-                type_name VARCHAR(100) NOT NULL,
-                capacity_adults INT NOT NULL DEFAULT 1,
-                capacity_children INT NOT NULL DEFAULT 0,
-                price_per_night DECIMAL(10,2) NOT NULL
-            )
-        ",
-        'rooms' => "
-            CREATE TABLE IF NOT EXISTS rooms (
-                room_id INT AUTO_INCREMENT PRIMARY KEY,
-                room_number VARCHAR(20) UNIQUE NOT NULL,
-                room_type_id INT NOT NULL,
-                status ENUM('Available', 'Booked', 'Maintenance') DEFAULT 'Available',
-                FOREIGN KEY (room_type_id) REFERENCES room_types(room_type_id)
-            )
-        ",
-        'bookings' => "
-            CREATE TABLE IF NOT EXISTS bookings (
-                booking_id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                room_type_id INT NOT NULL,
-                check_in_date DATE NOT NULL,
-                check_out_date DATE NOT NULL,
-                status ENUM('Pending', 'Confirmed', 'Checked-in', 'Checked-out', 'Cancelled') DEFAULT 'Pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                total_price DECIMAL(10,2) DEFAULT 0,
-                check_in_time TIMESTAMP NULL,
-                check_out_time TIMESTAMP NULL,
-                FOREIGN KEY (user_id) REFERENCES users(user_id),
-                FOREIGN KEY (room_type_id) REFERENCES room_types(room_type_id)
-            )
-        ",
-        'booking_rooms' => "
-            CREATE TABLE IF NOT EXISTS booking_rooms (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                booking_id INT NOT NULL,
-                room_id INT NOT NULL,
-                assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
-                FOREIGN KEY (room_id) REFERENCES rooms(room_id)
-            )
-        ",
-        'booking_logs' => "
-            CREATE TABLE IF NOT EXISTS booking_logs (
-                log_id INT AUTO_INCREMENT PRIMARY KEY,
-                booking_id INT NOT NULL,
-                action VARCHAR(100) NOT NULL,
-                admin_id INT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
-                FOREIGN KEY (admin_id) REFERENCES users(user_id)
-            )
-        "
-    ];
-    
-    foreach ($tables as $table => $sql) {
-        try {
-            $pdo->exec($sql);
-        } catch (PDOException $e) {
-            error_log("Error creating table $table: " . $e->getMessage());
+// Add missing columns to existing bookings table
+function migrate_bookings_table() {
+    try {
+        $pdo = get_pdo();
+        
+        // Check if adults column exists
+        $stmt = $pdo->query("SHOW COLUMNS FROM bookings LIKE 'adults'");
+        if ($stmt->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE bookings ADD COLUMN adults INT DEFAULT 1");
         }
+        
+        // Check if children column exists
+        $stmt = $pdo->query("SHOW COLUMNS FROM bookings LIKE 'children'");
+        if ($stmt->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE bookings ADD COLUMN children INT DEFAULT 0");
+        }
+        
+        // Check if notes column exists
+        $stmt = $pdo->query("SHOW COLUMNS FROM bookings LIKE 'notes'");
+        if ($stmt->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE bookings ADD COLUMN notes TEXT NULL");
+        }
+        
+        // Check if payment_status column exists
+        $stmt = $pdo->query("SHOW COLUMNS FROM bookings LIKE 'payment_status'");
+        if ($stmt->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE bookings ADD COLUMN payment_status ENUM('Pending', 'Partial Payment', 'Payment Complete') DEFAULT 'Pending'");
+        } else {
+            // Check current ENUM values and update if needed
+            $stmt = $pdo->query("SHOW COLUMNS FROM bookings WHERE Field = 'payment_status'");
+            $column = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($column && isset($column['Type'])) {
+                $currentType = $column['Type'];
+                $hasPending = strpos($currentType, 'Pending') !== false;
+                $hasPartial = strpos($currentType, 'Partial Payment') !== false;
+                $hasComplete = strpos($currentType, 'Payment Complete') !== false;
+                
+                if (!($hasPending && $hasPartial && $hasComplete)) {
+                    try {
+                        $pdo->exec("ALTER TABLE bookings MODIFY COLUMN payment_status ENUM('Pending', 'Partial Payment', 'Payment Complete') DEFAULT 'Pending'");
+                    } catch (Exception $e) {
+                        error_log("Error updating payment_status ENUM: " . $e->getMessage());
+                    }
+                }
+            }
+        }
+        
+    } catch (Exception $e) {
+        error_log("Migration error: " . $e->getMessage());
     }
 }
 
-// Initialize tables
-create_tables();
+// Run migration
+migrate_bookings_table();
 
 ?>

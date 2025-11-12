@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import Swal from "sweetalert2"; 
 import RoomFormModal from "./AddRoomForm";
@@ -32,15 +32,22 @@ export default function AddRoom() {
   const [editingRoom, setEditingRoom] = useState(null);
 
   // =================== FETCH ROOMS ===================
-  const fetchRooms = async () => {
+  const cancelTokenRef = useRef(null);
+
+  const fetchRooms = useCallback(async () => {
     setLoading(true);
+    // Cancel any previous in-flight request to avoid race conditions
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel('New request');
+    }
+    cancelTokenRef.current = axios.CancelToken.source();
     try {
       const params = {};
       if (search && search.trim() !== "") params.search = search.trim();
       if (roomTypeFilter !== "all") params.room_type = roomTypeFilter;
       if (statusFilter !== "all") params.status = statusFilter;
 
-      const res = await axios.get(`${API_BASE}/getRooms.php`, { params, timeout: 15000 });
+  const res = await axios.get(`${API_BASE}/getRooms.php`, { params, timeout: 15000, cancelToken: cancelTokenRef.current.token });
       const data = res.data?.data ?? [];
 
       const mapped = data.map((r) => ({
@@ -69,12 +76,24 @@ export default function AddRoom() {
       setLoading(false);
     }
     
-  };
+  }, [search, roomTypeFilter, statusFilter]);
 
   useEffect(() => {
-    fetchRooms();
-    setCurrentPage(1);
-  }, [search, roomTypeFilter, statusFilter]);
+    // Debounce search/filter changes to avoid excessive requests and race conditions
+    const debounceMs = 300;
+    const timer = setTimeout(() => {
+      fetchRooms();
+      setCurrentPage(1);
+    }, debounceMs);
+
+    return () => {
+      clearTimeout(timer);
+      // Cancel any in-flight request when dependencies change
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.cancel('Effect cleanup');
+      }
+    };
+  }, [fetchRooms]);
 
   // =================== PAGINATION ===================
   const filteredRoomsMemo = useMemo(() => rooms, [rooms]);

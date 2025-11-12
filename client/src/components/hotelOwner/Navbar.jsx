@@ -1,23 +1,26 @@
-
-import React, { useState, useRef, useEffect } from 'react'
+import React from 'react'
 import { assets } from '../../assets/assets'
-import { Link } from 'react-router-dom'
-import { FaUser, FaCog, FaSignOutAlt } from 'react-icons/fa'
+import { Link, useNavigate } from 'react-router-dom'
+import { FaSignOutAlt } from 'react-icons/fa'
 
 const NavBar = ({ onToggleSidebar }) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef(null)
+  const navigate = useNavigate();
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false)
-      }
+  const handleLogout = () => {
+    try {
+      // Clear owner and any user session artifacts
+      localStorage.removeItem('owner');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Optional: clear all if you prefer
+      // localStorage.clear();
+
+      alert('You have been logged out.');
+      navigate('/');
+    } catch (err) {
+      console.error('Logout failed', err);
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+  };
 
   return (
     <div className='flex items-center justify-between px-4 border-b border-gray-300 py-3 bg-white transition-all duration-300'>
@@ -42,55 +45,16 @@ const NavBar = ({ onToggleSidebar }) => {
         </button>
       </div>
 
-      {/* Right: Profile + Dropdown */}
-      <div className="relative" ref={dropdownRef}>
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition"
-        >
-          <img 
-            src={assets.userIcon}   // 👈 replace with your profile pic
-            alt="profile" 
-            className="w-9 h-9 rounded-full border"
-          />
-          <span className="text-gray-700 font-medium">John Doe</span>
-          <svg className={`w-4 h-4 transform transition ${isOpen ? "rotate-180" : ""}`} 
-               fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                  d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {/* Dropdown menu */}
-        {isOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg py-2 z-50">
-            <Link 
-              to="/account" 
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100"
-            >
-              <FaUser className='text-gray-500'/>
-              Account
-            </Link>
-            <Link 
-              to="/settings" 
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100"
-            >
-              <FaCog className='text-gray-500'/>
-              Settings
-            </Link>
-            <button 
-              onClick={() => alert("Logging out...")}
-              className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-            >
-              <FaSignOutAlt className='text-gray-500'/>
-              Logout
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Right: Logout Button */}
+      <button 
+        onClick={handleLogout}
+        className="flex items-center gap-2 px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition"
+      >
+        <FaSignOutAlt />
+        <span className="font-medium">Logout</span>
+      </button>
     </div>
   )
 }
 
 export default NavBar
-

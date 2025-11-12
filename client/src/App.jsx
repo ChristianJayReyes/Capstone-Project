@@ -23,6 +23,9 @@ import Offers from './pages/Offers'
 import Booking_logs from './pages/hotelOwner/Booking_logs'
 import Guests from './pages/hotelOwner/Guests'
 import Bookings from './pages/hotelOwner/Bookings'
+import EventReservations from './pages/hotelOwner/EventReservations'
+import EventReservationsLogs from './pages/hotelOwner/EventReservationsLogs'
+
 
 const App = () => {
   
@@ -57,6 +60,8 @@ const App = () => {
             <Route path="booking-logs" element={<Booking_logs />} />
             <Route path="guest" element={<Guests />} />
             <Route path="bookings" element={<Bookings />} />
+            <Route path='event-reservations' element={<EventReservations />} />
+            <Route path='event-reservations-logs' element={<EventReservationsLogs />} />
             
 
         </Route>

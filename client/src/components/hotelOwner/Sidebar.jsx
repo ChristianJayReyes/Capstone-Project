@@ -12,6 +12,8 @@ const SideBar = ({ isCollapsed = true, onHoverChange }) => {
     { name: "Booking Logs", path: "/owner/booking-logs", icon: assets.bookinglogsIcon },
     { name: "Guests", path: "/owner/guest", icon: assets.guestIcon },
     { name: "Rooms", path: "/owner/list-room", icon: assets.listIcon },
+    { name: "Event Reservations", path: "/owner/event-reservations", icon: assets.eventIcon },
+        { name: "Event Reservations Logs", path: "/owner/event-reservations-logs", icon: assets.eventIcon },
     // Optional future items can be added here
   ];
 

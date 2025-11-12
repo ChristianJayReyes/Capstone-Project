@@ -114,7 +114,7 @@ export const createBooking = async (req, res) => {
         children,
         totalPrice,
         isPaid ? "paid" : "unpaid",
-        "pending",
+        "Confirmed",
       ]
     );
 
@@ -154,7 +154,7 @@ export const createBooking = async (req, res) => {
       checkInDate: formattedCheckIn,
       checkOutDate: formattedCheckOut,
       roomId,
-      roomName, // ✅ Now it’s the actual readable name like “Dormitory Room”
+      roomName, 
       totalPrice,
       guests: {
         adults,

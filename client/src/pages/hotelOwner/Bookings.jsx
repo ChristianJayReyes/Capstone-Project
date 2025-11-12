@@ -3,8 +3,47 @@ import Title from '../../components/Title';
 import { assets } from '../../assets/assets';
 import '../../styles/dashboard.css';
 
-/* Map booking row from backend to UI-friendly shape */
+/* Normalize status from database format to lowercase with underscores */
+const normalizeStatus = (status) => {
+  if (!status) return 'confirmed';
+  const normalized = status.toLowerCase().replace(/-/g, '_');
+  // Map database values to normalized values
+  if (normalized === 'checked_in' || normalized === 'checked-in') return 'checked_in';
+  if (normalized === 'checked_out' || normalized === 'checked-out') return 'checked_out';
+  if (normalized === 'cancelled') return 'cancelled';
+  if (normalized === 'confirmed') return 'confirmed';
+  return 'confirmed'; // default
+};
+
+/* Normalize payment status */
+const normalizePaymentStatus = (paymentStatus) => {
+  if (!paymentStatus) return 'pending';
+  const normalized = paymentStatus.toLowerCase().replace(/\s+/g, '_');
+  if (normalized === 'not_paid') return 'pending';
+  if (normalized === 'pending') return 'pending';
+  if (normalized === 'paid') return 'partial_payment';
+  if (normalized === 'partial_payment') return 'partial_payment';
+  if (normalized === 'payment_complete' || normalized === 'completed') return 'payment_complete';
+  return 'pending';
+};
+
+const PAYMENT_STATUS_LABELS = {
+  pending: 'Pending',
+  partial_payment: 'Partial Payment',
+  payment_complete: 'Payment Complete',
+};
+
+/* Map booking */
 const mapBookingData = (b) => {
+  // Only use check_in_time/check_out_time if they exist (actual check-in/out was performed)
+  // Don't use check_in/check_out dates as they are just booking dates (default to midnight)
+  // check_in_time and check_out_time contain the actual datetime when check-in/out was performed
+  const checkInTime = b.check_in_time || null; // Only use if check-in was actually performed
+  const checkOutTime = b.check_out_time || null; // Only use if check-out was actually performed
+  
+  const normalizedPaymentStatus = normalizePaymentStatus(b.payment_status);
+  const displayPaymentStatus = PAYMENT_STATUS_LABELS[normalizedPaymentStatus] || 'Pending';
+  
   return {
     _id: String(b.booking_id ?? ''),
     bookingId: b.booking_id ?? '',
@@ -14,10 +53,13 @@ const mapBookingData = (b) => {
     roomNumber: b.room_number ?? '—',
     checkInDate: b.check_in ? new Date(b.check_in).toISOString().split('T')[0] : '',
     checkOutDate: b.check_out ? new Date(b.check_out).toISOString().split('T')[0] : '',
+    checkInTime: checkInTime,
+    checkOutTime: checkOutTime,
     guests: b.guests ?? '—',
     totalPrice: Number(b.total_price ?? 0),
-    paymentStatus: b.payment_status ?? 'Reserved',
-    status: b.booking_status ?? 'Pending',
+    paymentStatus: displayPaymentStatus,
+    status: normalizeStatus(b.booking_status),
+    normalizedPaymentStatus,
     createdAt: b.created_at ?? '',
   };
 };
@@ -35,13 +77,19 @@ const Bookings = () => {
   const [pageSize] = useState(10);
   
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
+  // Paid modal state
+  const [paidModal, setPaidModal] = useState({ open: false, booking: null, pendingConfirm: false });
   
-
-
-
-  // Check-in/out modal state
-  const [timeModal, setTimeModal] = useState({ open: false, booking: null, mode: 'checkin', value: '', pendingConfirm: false });
+  // Checkout modal state
+  const [checkoutModal, setCheckoutModal] = useState({ open: false, booking: null, pendingConfirm: false });
+  
+  // Check-in modal state
+  const [checkinModal, setCheckinModal] = useState({ open: false, booking: null, pendingConfirm: false });
+  
+  // Cancel confirmation modal state
+  const [cancelModal, setCancelModal] = useState({ open: false, booking: null });
 
   // API endpoints
   const BOOKINGS_API = 'http://localhost:8000/api/bookings/getBookings.php';
@@ -55,7 +103,8 @@ const Bookings = () => {
     const json = await res.json();
     const arr = Array.isArray(json) ? json : (json.data ?? []);
     const mapped = arr.map(mapBookingData);
-    setBookings(mapped.filter(b => b.status !== 'checked_out'));
+    // Filter out checked-out and cancelled bookings (they go to booking logs)
+    setBookings(mapped.filter(b => b.status !== 'checked_out' && b.status !== 'cancelled'));
   } catch (err) {
     console.error('Failed to fetch bookings', err);
     setBookings([]);
@@ -84,110 +133,89 @@ const Bookings = () => {
   }, [bookings, searchTerm, statusFilter, roomTypeFilter, dateFilter, checkOutFilter]);
 
   // api action handler
-  const handleBookingAction = async (booking, action, extra = {}) => {
+ const handleBookingAction = async (booking, action, options = {}) => {
+  try {
+    setActionLoading(true);
+    let response;
+    const datetime = options.datetime || null;
+
+    // Handle Paid action - just show confirmation
+    if (action === 'paid') {
+      // Open paid confirmation modal
+      setPaidModal({ open: true, booking: booking, pendingConfirm: true });
+      setActionLoading(false);
+      return;
+    }
+
+    // Handle Cancel action
+    if (action === 'cancel') {
+      // Open cancel confirmation modal
+      setCancelModal({ open: true, booking: booking });
+      setActionLoading(false);
+      return;
+    }
+
+    // Handle Check-in action - show confirmation modal (user must confirm)
+    if (action === 'checkin') {
+      // Open check-in confirmation modal
+      setCheckinModal({ open: true, booking: booking, pendingConfirm: true });
+      setActionLoading(false);
+      return;
+    }
+
+    // Handle Check-out action - just show confirmation
+    if (action === 'checkout') {
+      // Open checkout confirmation modal
+      setCheckoutModal({ open: true, booking: booking, pendingConfirm: true });
+      setActionLoading(false);
+      return;
+    }
+
+    if (response) {
+      const result = await response.json();
+      if (result.success) {
+        await refetch(); // Refresh bookings after action
+      } else {
+        alert(`${action.charAt(0).toUpperCase() + action.slice(1)} failed: ` + (result.message || result.error));
+      }
+    }
+  } catch (err) {
+    console.error('Action error', err);
+    alert('An error occurred. Check console.');
+  } finally {
+    setActionLoading(false);
+  }
+};
+
+  // Handle cancel confirmation
+  const handleCancelConfirm = async () => {
+    if (!cancelModal.booking) return;
     try {
-      // CONFIRM booking
-      if (action === 'confirm') {
-        if (!window.confirm(`Confirm booking for ${booking.user.username}?`)) return;
-        const response = await fetch(UPDATE_STATUS_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            booking_id: booking.bookingId,
-            action: 'confirm',
-            admin_id: 1
-          })
-        });
-        const result = await response.json();
-        if (result.success) {
-          alert('Booking confirmed.');
-          await refetch();
-        } else {
-          alert('Confirm failed: ' + (result.message || result.error || 'unknown'));
-        }
-        return;
-      }
-
-      // CANCEL
-      if (action === 'cancel') {
-        if (!window.confirm('Are you sure you want to cancel this booking?')) return;
-        const response = await fetch(UPDATE_STATUS_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            booking_id: booking.bookingId,
-            action: 'cancel',
-            admin_id: 1
-          })
-        });
-        const result = await response.json();
-        if (result.success) {
-          alert('Booking cancelled.');
-          await refetch();
-        } else {
-          alert('Cancel failed: ' + (result.message || result.error || 'unknown'));
-        }
-        return;
-      }
-
-      // OPEN time modal (checkin/checkout)
-      if (action === 'openTimeModal') {
-        setTimeModal({ open: true, booking, mode: extra.mode, value: '' });
-        return;
-      }
-
-      // DO CHECKIN
-      if (action === 'doCheckin') {
-        const timeValue = extra.value || timeModal.value || new Date().toISOString();
-        const response = await fetch(UPDATE_STATUS_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            booking_id: booking.bookingId,
-            action: 'checkin',
-            admin_id: 1,
-            time: timeValue
-          })
-        });
-        const result = await response.json();
-        if (result.success) {
-          alert('Checked in.');
-          setTimeModal({ open: false, booking: null, mode: 'checkin', value: '' });
-          await refetch();
-        } else {
-          alert('Check-in failed: ' + (result.message || result.error || 'unknown'));
-        }
-        return;
-      }
-
-      // DO CHECKOUT
-      if (action === 'doCheckout') {
-        const timeValue = extra.value || timeModal.value || new Date().toISOString();
-        const response = await fetch(UPDATE_STATUS_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            booking_id: booking.bookingId,
-            action: 'checkout',
-            admin_id: 1,
-            time: timeValue
-          })
-        });
-        const result = await response.json();
-        if (result.success) {
-          alert('Checked out.');
-          setTimeModal({ open: false, booking: null, mode: 'checkout', value: '' });
-          await refetch();
-        } else {
-          alert('Check-out failed: ' + (result.message || result.error || 'unknown'));
-        }
-        return;
+      setActionLoading(true);
+      const response = await fetch(UPDATE_STATUS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: cancelModal.booking.bookingId,
+          action: 'cancel',
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setCancelModal({ open: false, booking: null });
+        await refetch();
+      } else {
+        alert('Cancel failed: ' + (result.message || result.error));
       }
     } catch (err) {
-      console.error('action error', err);
+      console.error('Cancel error', err);
       alert('An error occurred. Check console.');
+    } finally {
+      setActionLoading(false);
     }
   };
+
+
 
   const roomTypes = Array.from(new Set(bookings.map(b => b.roomType))).filter(Boolean);
 
@@ -195,15 +223,32 @@ const Bookings = () => {
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
   const paginatedBookings = (filteredBookings || []).slice((page - 1) * pageSize, page * pageSize);
   
-  const STATUS_CONFIG = {
+  // Status Config
+const STATUS_CONFIG = {
     confirmed: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Confirmed' },
     cancelled: { color: 'bg-red-100 text-red-800 border-red-200', label: 'Cancelled' },
-    pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', label: 'Pending' },
     'no-show': { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'No-Show' },
-    'checked_in': { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Checked-In' },
-    'checked_out': { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Checked-Out' }
-  };
-  const getStatusConfig = (b) => STATUS_CONFIG[b.status] || STATUS_CONFIG.pending;
+    checked_in: { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Checked-In' },
+    checked_out: { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Checked-Out' },
+    'Checked-in': { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Checked-In' },
+    'Checked-out': { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Checked-Out' },
+    'Cancelled': { color: 'bg-red-100 text-red-800 border-red-200', label: 'Cancelled' },
+    'Confirmed': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Confirmed' }
+};
+
+
+const getStatusConfig = (b) => STATUS_CONFIG[b.status] || STATUS_CONFIG.confirmed;  
+
+// Subtle row background highlights by status
+const ROW_BG = {
+  confirmed: 'bg-green-50',
+  checked_in: 'bg-blue-50',
+  checked_out: 'bg-gray-50',
+  cancelled: 'bg-red-50',
+};
+
+const getRowBgClass = (status) => ROW_BG[status] || '';
+
 
   return (
     <div className="w-full bg-white min-h-screen font-['Poppins']">
@@ -232,7 +277,6 @@ const Bookings = () => {
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white">
                 <option value="all">All Status</option>
-                <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="checked_in">Checked-In</option>
                 <option value="checked_out">Checked-Out</option>
@@ -293,15 +337,57 @@ const Bookings = () => {
               <tbody className="divide-y divide-gray-200">
                 {paginatedBookings.map(b => {
                   const sConf = getStatusConfig(b);
+                  const rowBg = getRowBgClass(b.status);
                   return (
-                    <tr key={b._id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={b._id} className={`${rowBg} hover:bg-gray-50 transition-colors`}>
                       <td className="py-4 px-4 text-center text-sm text-gray-900 font-mono">#{String(b._id).slice(-6)}</td>
-                      <td className="py-4 px-4 text-left text-sm text-gray-900">{b.guestName}</td>
+                      <td className="py-4 px-4 text-left text-sm text-gray-900">
+                        <div className="font-medium">{b.guestName}</div>
+                        {b.email && (
+                          <div className="text-xs text-gray-500 mt-0.5">{b.email}</div>
+                        )}
+                      </td>
                       <td className="py-4 px-4 text-left text-sm text-gray-900">{b.roomType}</td>
 
                       <td className="py-4 px-4 text-center text-sm text-gray-900">{b.roomNumber || '—'}</td>
-                      <td className="py-4 px-4 text-center text-sm text-gray-900">{b.checkInDate ? new Date(b.checkInDate).toLocaleDateString() : '—'}</td>
-                      <td className="py-4 px-4 text-center text-sm text-gray-900">{b.checkOutDate ? new Date(b.checkOutDate).toLocaleDateString() : '—'}</td>
+                      <td className="py-4 px-4 text-center text-sm text-gray-900">
+                        {b.checkInDate ? (
+                          <>
+                            <div>{new Date(b.checkInDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</div>
+                            {b.checkInTime ? (
+                              <div className="text-xs text-gray-600 mt-0.5 font-medium">
+                                {new Date(b.checkInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500 mt-0.5">—</div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div></div>
+                            <div className="text-xs text-gray-500 mt-0.5"></div>
+                          </>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 text-center text-sm text-gray-900">
+                        {b.checkOutDate ? (
+                          <>
+                            <div>{new Date(b.checkOutDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</div>
+                            {b.checkOutTime ? (
+                              <div className="text-xs text-gray-600 mt-0.5 font-medium">
+                                {new Date(b.checkOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500 mt-0.5">—</div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div></div>
+                            <div className="text-xs text-gray-500 mt-0.5"></div>
+                          </>
+                        )}
+                      </td>
                       <td className="py-4 px-4 text-center text-sm text-gray-900">{b.guests}</td>
                       <td className="py-4 px-4 text-center text-sm text-gray-900 font-semibold">₱{(b.totalPrice || 0).toLocaleString()}</td>
                       <td className="py-4 px-4 text-center text-sm text-gray-900">{b.paymentStatus}</td>
@@ -310,39 +396,75 @@ const Bookings = () => {
                       </td>
 
                       <td className="py-4 px-4 text-center">
-                        <div className="flex flex-row gap-2 items-center justify-center flex-nowrap">
-                          {/* Confirmed -> Check-in & Cancel */}
-                          {b.status === 'confirmed' && (
-                            <>
-                              <button
-                                onClick={() => handleBookingAction(b, 'openTimeModal', { mode: 'checkin' })}
-                                className="inline-flex items-center px-5 h-9 border border-blue-400 text-xs font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 transition-colors"
-                              >
-                                Check-in
-                              </button>
-                              <button
-                                onClick={() => handleBookingAction(b, 'cancel')}
-                                className="inline-flex items-center px-5 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-red-700 hover:bg-red-800 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          )}
-                          {/* Checked-in -> Check-out */}
-                          {b.status === 'checked_in' && (
-                            <button
-                              onClick={() => handleBookingAction(b, 'openTimeModal', { mode: 'checkout' })}
-                              className="inline-flex items-center px-5 h-9 border border-orange-400 text-xs font-medium rounded-lg text-orange-700 bg-white hover:bg-orange-50 transition-colors"
-                            >
-                              Check-out
-                            </button>
-                          )}
-                          {/* Cancelled -> nothing or dash */}
-                          {b.status === 'cancelled' && (
-                            <span className="text-sm text-gray-500">—</span>
-                          )}
-                        </div>
-                      </td>
+  <div className="flex flex-row gap-2 items-center justify-center flex-nowrap">
+    {/* Flow 1: Pending + Confirmed -> Mark as Paid & Cancel */}
+    {b.status === 'confirmed' && b.normalizedPaymentStatus === 'pending' && (
+      <>
+        <button
+          onClick={() => handleBookingAction(b, 'paid')}
+          disabled={actionLoading}
+          className="inline-flex items-center px-5 h-9 border border-green-400 text-xs font-medium rounded-lg text-green-700 bg-white hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Mark as Paid
+        </button>
+        <button
+          onClick={() => handleBookingAction(b, 'cancel')}
+          disabled={actionLoading}
+          className="inline-flex items-center px-5 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-red-700 hover:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Cancel
+        </button>
+      </>
+    )}
+    {/* Flow 2: Partial Payment + Confirmed -> Check-in & Cancel */}
+    {b.status === 'confirmed' && b.normalizedPaymentStatus === 'partial_payment' && (
+      <>
+        <button
+          onClick={() => handleBookingAction(b, 'checkin')}
+          disabled={actionLoading}
+          className="inline-flex items-center px-5 h-9 border border-blue-400 text-xs font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Check-in
+        </button>
+        <button
+          onClick={() => handleBookingAction(b, 'cancel')}
+          disabled={actionLoading}
+          className="inline-flex items-center px-5 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-red-700 hover:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Cancel
+        </button>
+      </>
+    )}
+    {/* Flow 3: Partial Payment + Checked-in -> Check-out & Cancel */}
+    {b.status === 'checked_in' && b.normalizedPaymentStatus === 'partial_payment' && (
+      <>
+        <button
+          onClick={() => handleBookingAction(b, 'checkout')}
+          disabled={actionLoading}
+          className="inline-flex items-center px-5 h-9 border border-orange-400 text-xs font-medium rounded-lg text-orange-700 bg-white hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Check-out
+        </button>
+        <button
+          onClick={() => handleBookingAction(b, 'cancel')}
+          disabled={actionLoading}
+          className="inline-flex items-center px-5 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-red-700 hover:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Cancel
+        </button>
+      </>
+    )}
+    {/* Flow 4: Payment Complete + Checked-out -> No actions (finished) */}
+    {b.status === 'checked_out' && b.normalizedPaymentStatus === 'payment_complete' && (
+      <span className="text-sm text-gray-500">—</span>
+    )}
+    {/* Cancelled -> No actions */}
+    {b.status === 'cancelled' && (
+      <span className="text-sm text-gray-500">—</span>
+    )}
+  </div>
+</td>
+
                     </tr>
                   );
                 })}
@@ -386,68 +508,277 @@ const Bookings = () => {
           </div>
         )}
 
-        {/* Time modal (blur overlay, 2-step confirmation) */}
-        {timeModal.open && !timeModal.pendingConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-white/70">
-            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border animate-fade-in">
-              <h3 className="text-lg font-semibold mb-3">{timeModal.mode === 'checkin' ? 'Check-in' : 'Check-out'} time</h3>
-              <div className="mb-4">
-                <label className="block text-sm text-gray-700 mb-1">Pick date & time</label>
-                <input type="datetime-local" value={timeModal.value} onChange={(e) => setTimeModal(m => ({ ...m, value: e.target.value }))} className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div className="flex justify-end gap-4">
-                <button onClick={() => setTimeModal({ open: false, booking: null, mode: 'checkin', value: '' })} className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors">Cancel</button>
-                <button
-                  onClick={() => setTimeModal(m => ({ ...m, pendingConfirm: true }))}
-                  className={`min-w-[100px] h-10 px-4 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700`}
-                  disabled={!timeModal.value}
-                >OK</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Confirmation for check-in/out time (with blur) */}
-        {timeModal.open && timeModal.pendingConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-white/70">
-            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border animate-fade-in text-center">
+        {/* Paid Modal - Confirmation */}
+        {paidModal.open && paidModal.pendingConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
+            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border text-center">
               <div className="mb-5">
-                <h3 className="text-lg font-semibold mb-2">Confirm {timeModal.mode === 'checkin' ? 'Check-in' : 'Check-out'}</h3>
+                <h3 className="text-lg font-semibold mb-2">Mark as Paid</h3>
                 <div className="mb-1 text-gray-700">
-                  <span className="font-semibold">{timeModal.booking?.guestName || ''}</span>
-{timeModal.booking?.roomNumber && (
-  <>
-    <span> • Room {timeModal.booking.roomNumber}</span>
-    {timeModal.booking?.roomType ? (
-      <span> ({timeModal.booking.roomType})</span>
-    ) : null}
-  </>
-)}
+                  <span className="font-semibold">{paidModal.booking?.guestName || ''}</span>
+                  {paidModal.booking?.roomNumber && (
+                    <>
+                      <span> • Room {paidModal.booking.roomNumber}</span>
+                      {paidModal.booking?.roomType && (
+                        <span> ({paidModal.booking.roomType})</span>
+                      )}
+                    </>
+                  )}
                 </div>
-                <div className="text-sm">
-                  {timeModal.mode === 'checkin' ? 'Check-in' : 'Check-out'} date & time:
-                  <span className="ml-1 font-semibold">{timeModal.value ? new Date(timeModal.value).toLocaleString() : ''}</span>
-                </div>
+                <p className="text-sm text-gray-600 mt-2">Are you sure you want to mark this booking as paid?</p>
               </div>
-              <div className="flex justify-end gap-4">
+              <div className="flex justify-center gap-4">
                 <button
-                  onClick={() => setTimeModal({ open: false, booking: null, mode: 'checkin', value: '' })}
+                  onClick={async () => {
+                    setActionLoading(true);
+                    try {
+                      const response = await fetch(UPDATE_STATUS_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          booking_id: paidModal.booking.bookingId,
+                          action: 'paid',
+                        }),
+                      });
+                      const result = await response.json();
+                      if (result.success) {
+                        await refetch();
+                        setPaidModal({ open: false, booking: null, pendingConfirm: false });
+                      } else {
+                        alert(`Paid failed: ${result.message}`);
+                      }
+                    } catch (error) {
+                      console.error('Error:', error);
+                      alert(`Paid failed: ${error.message}`);
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  className={`min-w-[120px] h-10 px-4 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => setPaidModal({ open: false, booking: null, pendingConfirm: false })}
                   className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
+                  disabled={actionLoading}
                 >
                   Cancel
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Checkout Modal - Confirmation */}
+        {checkoutModal.open && checkoutModal.pendingConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
+            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border text-center">
+              <div className="mb-5">
+                <h3 className="text-lg font-semibold mb-2">Check-out</h3>
+                <div className="mb-1 text-gray-700">
+                  <span className="font-semibold">{checkoutModal.booking?.guestName || ''}</span>
+                  {checkoutModal.booking?.roomNumber && (
+                    <>
+                      <span> • Room {checkoutModal.booking.roomNumber}</span>
+                      {checkoutModal.booking?.roomType && (
+                        <span> ({checkoutModal.booking.roomType})</span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">Are you sure you want to check-out this guest?</p>
+              </div>
+              <div className="flex justify-center gap-4">
                 <button
-                  onClick={() => {
-                    handleBookingAction(timeModal.booking, timeModal.mode === 'checkin' ? 'doCheckin' : 'doCheckout', { value: timeModal.value });
-                    setTimeModal({ open: false, booking: null, mode: 'checkin', value: '', pendingConfirm: false });
+                  onClick={async () => {
+                    setActionLoading(true);
+                    try {
+                      const now = new Date();
+                      const autoDatetime = now.toISOString().slice(0, 19);
+                      const response = await fetch(UPDATE_STATUS_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          booking_id: checkoutModal.booking.bookingId,
+                          action: 'checkout',
+                          datetime: autoDatetime,
+                        }),
+                      });
+                      const result = await response.json();
+                      if (result.success) {
+                        await refetch();
+                        setCheckoutModal({ open: false, booking: null, pendingConfirm: false });
+                      } else {
+                        alert(`Check-out failed: ${result.message}`);
+                      }
+                    } catch (error) {
+                      console.error('Error:', error);
+                      alert(`Check-out failed: ${error.message}`);
+                    } finally {
+                      setActionLoading(false);
+                    }
                   }}
-                  className={`min-w-[120px] h-10 px-4 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700`}
+                  className={`min-w-[120px] h-10 px-4 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
+                  disabled={actionLoading}
                 >
-                  Confirm
+                  {actionLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => setCheckoutModal({ open: false, booking: null, pendingConfirm: false })}
+                  className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
+                  disabled={actionLoading}
+                >
+                  Cancel
                 </button>
               </div>
             </div>
           </div>
         )}
+
+        {/* Check-in Modal - Confirmation */}
+        {checkinModal.open && checkinModal.pendingConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
+            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border text-center">
+              <div className="mb-5">
+                <h3 className="text-lg font-semibold mb-2">Check-in</h3>
+                <div className="mb-1 text-gray-700">
+                  <span className="font-semibold">{checkinModal.booking?.guestName || ''}</span>
+                  {checkinModal.booking?.roomNumber && (
+                    <>
+                      <span> • Room {checkinModal.booking.roomNumber}</span>
+                      {checkinModal.booking?.roomType && (
+                        <span> ({checkinModal.booking.roomType})</span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">Are you sure you want to check-in this guest?</p>
+              </div>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={async () => {
+                    setActionLoading(true);
+                    try {
+                      const now = new Date();
+                      const bookingDate = checkinModal.booking?.checkInDate ? new Date(checkinModal.booking.checkInDate) : now;
+                      bookingDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+                      const autoDatetime = bookingDate.toISOString().slice(0, 19);
+
+                      const response = await fetch(UPDATE_STATUS_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          booking_id: checkinModal.booking.bookingId,
+                          action: 'checkin',
+                          datetime: autoDatetime,
+                        }),
+                      });
+                      const result = await response.json();
+                      if (result.success) {
+                        await refetch();
+                        setCheckinModal({ open: false, booking: null, pendingConfirm: false });
+                      } else {
+                        alert(`Check-in failed: ${result.message}`);
+                      }
+                    } catch (error) {
+                      console.error('Error:', error);
+                      alert(`Check-in failed: ${error.message}`);
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  className={`min-w-[120px] h-10 px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => setCheckinModal({ open: false, booking: null, pendingConfirm: false })}
+                  className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Confirmation Modal */}
+        {cancelModal.open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
+            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border text-center">
+              <div className="mb-5">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Cancel Booking</h3>
+                <p className="text-sm text-gray-600 mb-4">Are you sure you want to cancel this booking?</p>
+                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                  <div className="font-semibold">{cancelModal.booking?.guestName || ''}</div>
+                  {cancelModal.booking?.roomNumber && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Room {cancelModal.booking.roomNumber} • {cancelModal.booking.roomType}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleCancelConfirm}
+                  className={`min-w-[120px] h-10 px-4 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Cancelling...
+                    </>
+                  ) : 'Yes, Cancel'}
+                </button>
+                <button
+                  onClick={() => setCancelModal({ open: false, booking: null })}
+                  className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
       </div>
     </div>

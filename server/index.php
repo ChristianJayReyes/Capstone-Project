@@ -29,6 +29,9 @@ try {
     if ($method === 'GET' && $path === '/api/dashboard/recent-bookings') {
         include __DIR__ . '/dashboard/getRecentBookings.php';
     }
+    if ($method === 'GET' && $path === '/api/dashboard/trends') {
+        include __DIR__ . '/dashboard/getBookingTrends.php';
+    }
     
     // BOOKINGS ENDPOINTS
     if ($method === 'GET' && $path === '/api/bookings') {
@@ -48,10 +51,10 @@ try {
     }
     
     // BOOKING LOGS ENDPOINTS
-    if ($method === 'GET' && $path === '/api/booking-logs') {
+    if ($method === 'GET' && $path === '/api/booking_logs') {
         include __DIR__ . '/logs/getBookingLogs.php';
     }
-    if ($method === 'GET' && $path === '/api/booking-logs/export') {
+    if ($method === 'GET' && $path === '/api/booking_logs/export') {
         include __DIR__ . '/logs/exportBookingLogs.php';
     }
     
@@ -112,7 +115,7 @@ if ($method === 'GET' && route_starts_with($path, '/api/rooms/guests/')) {
     if ($method === 'GET' && $path === '/api/rooms') {
         include __DIR__ . '/rooms/getRooms.php';
     }
-    if ($method === 'GET' && $path === '/api/booking-logs') {
+    if ($method === 'GET' && $path === '/api/booking_logs') {
         include __DIR__ . '/logs/getBookingLogs.php';
     }
     

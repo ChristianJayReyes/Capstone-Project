@@ -92,8 +92,8 @@ const Bookings = () => {
   const [cancelModal, setCancelModal] = useState({ open: false, booking: null });
 
   // API endpoints
-  const BOOKINGS_API = 'http://localhost:8000/api/bookings/getBookings.php';
-  const UPDATE_STATUS_API = 'http://localhost:8000/api/bookings/updateBookingStatus.php';
+  const BOOKINGS_API = 'http://localhost:3000/api/bookings/getBookings.php';
+  const UPDATE_STATUS_API = 'http://localhost:3000/api/bookings/updateBookingStatus.php';
 
   // fetch bookings
   const refetch = async () => {

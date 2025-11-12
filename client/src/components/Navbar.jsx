@@ -131,7 +131,10 @@ const Navbar = () => {
           {currentUser ? (
             <div className="relative">
               <img
-                src={currentUser.photo || "https://static.vecteezy.com/system/resources/previews/000/550/731/original/user-icon-vector.jpg"} 
+                src={
+                  currentUser.photo ||
+                  "https://static.vecteezy.com/system/resources/previews/000/550/731/original/user-icon-vector.jpg"
+                }
                 alt="user avatar"
                 className="h-15 w-15 rounded-full object-cover cursor-pointer border"
                 onClick={() => setProfileMenuOpen((prev) => !prev)}
@@ -146,7 +149,8 @@ const Navbar = () => {
                       <div className="absolute -inset-0.5 rounded-full bg-gradient-to-tr from-yellow-400 to-pink-500 animate-spin-slow"></div>
                       <img
                         src={
-                          currentUser.photo || "https://static.vecteezy.com/system/resources/previews/000/550/731/original/user-icon-vector.jpg"
+                          currentUser.photo ||
+                          "https://static.vecteezy.com/system/resources/previews/000/550/731/original/user-icon-vector.jpg"
                         }
                         alt="user avatar"
                         className="relative h-14 w-14 rounded-full object-cover border-2 border-white"

@@ -25,41 +25,13 @@ if (!$data) {
 
 $booking_id = $data['booking_id'] ?? null;
 $action = strtolower(trim($data['action'] ?? ''));
-<<<<<<< HEAD
-=======
 $datetime = $data['datetime'] ?? null; // Optional datetime for check-in/check-out
->>>>>>> 213429f (Merged Admin/Client Side)
 
 if (!$booking_id || !$action) {
     echo json_encode(["success" => false, "message" => "Missing booking_id or action"]);
     exit;
 }
 
-<<<<<<< HEAD
-// Booking + Payment transitions (room status removed, manual control)
-$statusMap = [
-    'checkin'  => ['Checked-in', 'Paid'],
-    'checkout' => ['Checked-out', 'Paid'],
-    'cancel'   => ['Cancelled', 'Refunded']
-];
-
-if (!isset($statusMap[$action])) {
-    echo json_encode(["success" => false, "message" => "Invalid action"]);
-    exit;
-}
-
-[$newStatus, $newPaymentStatus] = $statusMap[$action];
-
-try {
-    $pdo = get_pdo();
-    $stmt = $pdo->prepare("
-        UPDATE bookings 
-        SET status = ?, payment_status = ? 
-        WHERE booking_id = ?
-    ");
-    $stmt->execute([$newStatus, $newPaymentStatus, $booking_id]);
-
-=======
 try {
     $pdo = get_pdo();
     $allowedPaymentStatuses = [];
@@ -346,7 +318,6 @@ try {
     $pdo->commit();
 
     // Return success response with updated status and payment status
->>>>>>> 213429f (Merged Admin/Client Side)
     echo json_encode([
         "success" => true,
         "message" => "Booking status updated successfully.",
@@ -355,13 +326,10 @@ try {
     ]);
 
 } catch (Throwable $e) {
-<<<<<<< HEAD
-=======
     // Handle error
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
->>>>>>> 213429f (Merged Admin/Client Side)
     echo json_encode([
         "success" => false,
         "message" => "Update failed",

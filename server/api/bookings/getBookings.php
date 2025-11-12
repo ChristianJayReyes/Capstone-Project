@@ -4,8 +4,6 @@ require_once __DIR__ . '/../../db.php';
 try {
     $pdo = get_pdo();
 
-<<<<<<< HEAD
-=======
     // Check if check_in_time and check_out_time columns exist
     $hasCheckInTime = false;
     $hasCheckOutTime = false;
@@ -27,7 +25,6 @@ try {
         $timeColumns .= ', b.check_out_time';
     }
 
->>>>>>> 213429f (Merged Admin/Client Side)
     $sql = "
         SELECT 
             b.booking_id,
@@ -36,12 +33,8 @@ try {
             rt.type_name AS room_type,
             b.room_number,
             b.check_in,
-<<<<<<< HEAD
-            b.check_out,
-=======
             b.check_out
             {$timeColumns},
->>>>>>> 213429f (Merged Admin/Client Side)
             CONCAT('Adult ', b.adults, ' | Child ', b.children) AS guests,
             b.total_price,
             b.payment_status,

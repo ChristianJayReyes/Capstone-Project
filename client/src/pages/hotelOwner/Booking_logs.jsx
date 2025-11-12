@@ -65,7 +65,7 @@ const BookingLogs = () => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const res = await fetch('http://localhost:8000/api/logs/getBookingLogs.php');
+        const res = await fetch('http://localhost:3000/api/logs/getBookingLogs.php');
         const data = await res.json();
         const mapped = (Array.isArray(data.data) ? data.data : []).map((l, idx) => {
           const rawCheckIn = l.check_in;
@@ -198,7 +198,7 @@ const BookingLogs = () => {
       console.log('Exporting with params:', params.toString());
       
       // Fetch the CSV file
-      const response = await fetch(`http://localhost:8000/api/logs/exportBookingLogs.php?${params.toString()}`);
+      const response = await fetch(`http://localhost:3000/api/logs/exportBookingLogs.php?${params.toString()}`);
       
       if (!response.ok) {
         const errorText = await response.text();

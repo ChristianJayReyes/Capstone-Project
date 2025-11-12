@@ -2,7 +2,7 @@
 import connectDB from "../configs/db.js";
 import { sendReservationEmail } from "../utils/reservationEmail.js";
 
-// ✅ Function to check room availability
+// Function to check room availability
 const checkAvailability = async ({ checkInDate, checkOutDate, roomId }) => {
   try {
     const pool = await connectDB();
@@ -25,7 +25,7 @@ const checkAvailability = async ({ checkInDate, checkOutDate, roomId }) => {
   }
 };
 
-// ✅ API: Check availability of a room
+// API: Check availability of a room
 export const checkAvailabilityAPI = async (req, res) => {
   try {
     const { roomId, checkInDate, checkOutDate } = req.body;
@@ -63,16 +63,16 @@ export const createBooking = async (req, res) => {
 
     const db = await connectDB();
 
-    // ✅ Convert ISO date to MySQL DATE format (YYYY-MM-DD)
+    // Convert ISO date to MySQL DATE format (YYYY-MM-DD)
     const formatDate = (date) => new Date(date).toISOString().slice(0, 10);
     const formattedCheckIn = formatDate(checkInDate);
     const formattedCheckOut = formatDate(checkOutDate);
 
-    // ✅ Extract adults and children
+    // Extract adults and children
     const adults = parseInt(guests.adults) || 0;
     const children = parseInt(guests.children) || 0;
 
-    // ✅ Check if the room is already booked within the selected range
+    // Check if the room is already booked within the selected range
     const [existingBookings] = await db.query(
       `SELECT * FROM bookings
        WHERE room_number = ?
@@ -99,7 +99,7 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // ✅ Insert new booking record
+    // Insert new booking record
     const [result] = await db.query(
       `INSERT INTO bookings 
         (user_id, room_type_id, room_number, check_in, check_out, adults, children, total_price, payment_status, status) 
@@ -118,7 +118,7 @@ export const createBooking = async (req, res) => {
       ]
     );
 
-    // ✅ Respond to frontend
+    // Respond to frontend
     res.status(201).json({
       success: true,
       message: "✅ Booking created successfully!",
@@ -211,6 +211,62 @@ export const getUserBookings = async (req, res) => {
     });
   }
 };
+
+// ✅ Get all bookings (Admin view)
+export const getAllBookings = async (req, res) => {
+  const db = await connectDB();
+
+  try {
+    // Check if optional time columns exist
+    let hasCheckInTime = false;
+    let hasCheckOutTime = false;
+
+    const [checkInCols] = await db.query(
+      "SHOW COLUMNS FROM bookings LIKE 'check_in_time'"
+    );
+    hasCheckInTime = checkInCols.length > 0;
+
+    const [checkOutCols] = await db.query(
+      "SHOW COLUMNS FROM bookings LIKE 'check_out_time'"
+    );
+    hasCheckOutTime = checkOutCols.length > 0;
+
+    // Build the dynamic query depending on existing columns
+    let timeColumns = "";
+    if (hasCheckInTime) timeColumns += ", b.check_in_time";
+    if (hasCheckOutTime) timeColumns += ", b.check_out_time";
+
+    const [bookings] = await db.query(`
+      SELECT 
+        b.booking_id,
+        u.full_name AS guest_name,
+        u.email,
+        rt.type_name AS room_type,
+        b.room_number,
+        b.check_in,
+        b.check_out
+        ${timeColumns},
+        CONCAT('Adult ', b.adults, ' | Child ', b.children) AS guests,
+        b.total_price,
+        b.payment_status,
+        b.status AS booking_status,
+        b.created_at
+      FROM bookings b
+      JOIN users u ON b.user_id = u.user_id
+      JOIN room_types rt ON b.room_type_id = rt.room_type_id
+      ORDER BY b.created_at DESC
+    `);
+
+    res.status(200).json({ success: true, data: bookings });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch bookings",
+      error: err.message,
+    });
+  }
+};
+
 
 // API: Get dashboard data (for owner/admin)
 // GET /api/bookings/hotel

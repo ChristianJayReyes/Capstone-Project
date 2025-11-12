@@ -1,9 +1,17 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Title from '../../components/Title'
 import { assets, dashboardDummyData } from '../../assets/assets'
 import '../../styles/dashboard.css';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!localStorage.getItem("token")){
+      navigate("/login", {replace: true});
+    }
+  }, [navigate]);
     const [dashboardData, setDashboardData] = React.useState(dashboardDummyData);
   return (
     <div className="w-full flex justify-center">

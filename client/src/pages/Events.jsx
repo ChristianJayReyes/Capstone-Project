@@ -390,6 +390,28 @@ const EventPage = () => {
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">
+                  Event Type <span className="text-red-500">*</span>
+                </label>
+                {formData.eventType ? (
+                  // Show pre-selected event type (from package selection) as read-only
+                  <div>
+                    <div className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-blue-50 text-gray-700 font-medium">
+                      {formData.eventType}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Event type automatically selected from package.
+                    </p>
+                  </div>
+                ) : (
+                  // Show message if no event type is selected (shouldn't happen if opened from package)
+                  <div className="w-full px-4 py-2 rounded-lg border border-red-300 bg-red-50 text-red-700">
+                    Please select a package to book an event.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
                   Full Name
                 </label>
                 <input
@@ -451,13 +473,29 @@ const EventPage = () => {
                 ></textarea>
               </div>
 
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-gray-700 font-medium mb-1">
+                  Selected Dates:
+                </p>
+                <p className="text-sm text-gray-600">
+                  {range[0].startDate && range[0].endDate
+                    ? `${formatDateToLocal(
+                        range[0].startDate
+                      )} to ${formatDateToLocal(range[0].endDate)}`
+                    : "No dates selected"}
+                </p>
+              </div>
+
               <div className="flex flex-col md:flex-row items-center justify-between gap-3 mt-6">
                 <button
                   type="button"
                   onClick={() => setOpenCalendar(true)}
                   className="w-full md:w-1/2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2.5 rounded-lg shadow-lg hover:scale-105 transition"
                 >
-                  📅 Open Calendar
+                  📅{" "}
+                  {range[0].startDate && range[0].endDate
+                    ? "Change Dates"
+                    : "Select Dates"}
                 </button>
 
                 <button

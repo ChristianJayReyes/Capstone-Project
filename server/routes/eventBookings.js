@@ -390,7 +390,7 @@ router.post("/", async (req, res) => {
       }
     }
 
-    res.status(201).json({ message: "Event booking saved successfully!" });
+    res.status(201).json({ message: "Wait for further confirmation on your reservation!" });
   } catch (error) {
     console.error("❌ Database Error:", error);
     res.status(500).json({ 

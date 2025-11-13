@@ -193,4 +193,25 @@ router.get(
   }
 );
 
+// Admin login route
+router.post("/admin-login", (req, res) => {
+  const { email, password } = req.body;
+
+  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+    const token = jwt.sign(
+      { email, role: "hotelAdmin", name: "Admin" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    return res.json({
+      success:true,
+      token,
+      user: { email, role: "hotelAdmin", name: "Admin"},
+    });
+  } else {
+    return res.status(401).json({ success: false, message: "Invalid credentials"});
+  }
+})
+
 export default router;

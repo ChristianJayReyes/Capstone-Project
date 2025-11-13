@@ -19,8 +19,12 @@ import toast from "react-hot-toast";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
+import { useNavigate } from "react-router-dom";
 
 const EventPage = () => {
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+
   const [openGallery, setOpenGallery] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -38,9 +42,35 @@ const EventPage = () => {
     email: "",
     contactNumber: "",
     specialRequest: "",
+    eventType: "",
   });
 
+  const handleOpenForm = (eventType = "") => {
+    if (!token) {
+      toast.error("You must log in first to reserve an event.");
+      return navigate("/login");
+    }
+
+    setFormData({
+      customerName: "",
+      email: "",
+      contactNumber: "",
+      specialRequest: "",
+      eventType: eventType,
+    });
+    setOpenForm(true);
+  };
+
   const categories = ["Weddings", "Birthdays", "Christenings"];
+
+  const formatDateToLocal = (date) => {
+    if (!date) return "";
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   const galleryImages = {
     weddings: [wed1, wed2, wed3, wed4],
@@ -70,14 +100,16 @@ const EventPage = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           customer_name: formData.customerName,
           email: formData.email,
           contact_number: formData.contactNumber,
           special_request: formData.specialRequest,
-          event_start_date: range[0].startDate,
-          event_end_date: range[0].endDate,
+          event_type: formData.eventType,
+          event_start_date: range[0].startDate.toISOString().split("T")[0],
+          event_end_date: range[0].endDate.toISOString().split("T")[0],
         }),
       });
 
@@ -349,7 +381,7 @@ const EventPage = () => {
 
               <button
                 className="mt-8 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-3 rounded-full transition-all duration-300 font-semibold shadow-md hover:shadow-lg"
-                onClick={() => setOpenForm(true)}
+                onClick={() => handleOpenForm(pkg.title)}
               >
                 Book Now
               </button>

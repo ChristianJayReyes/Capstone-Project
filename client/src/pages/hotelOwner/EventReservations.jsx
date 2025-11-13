@@ -6,30 +6,29 @@ const formatDateRange = (dateRange) => {
   if (!dateRange.includes(" to ")) return dateRange;
 
   const [start, end] = dateRange.split(" to ");
-  
-  // Helper function to format date without timezone issues
+
+  // Helper to parse date as YYYY-MM-DD ignoring timezone
   const format = (dateStr) => {
     if (!dateStr) return "Invalid Date";
-    
+
     try {
-      // Handle date strings (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
-      const datePart = dateStr.split('T')[0].split(' ')[0]; // Get just YYYY-MM-DD part
-      const [year, month, day] = datePart.split('-').map(Number);
-      
-      // Create date using local time to avoid timezone shifts
-      const date = new Date(year, month - 1, day);
-      
-      if (isNaN(date.getTime())) return "Invalid Date";
-      
-      // Format as "Nov 26, 2025" using local date components
+      // Extract just the date part (ignore time)
+      const datePart = dateStr.split(" ")[0]; // '2025-11-24'
+      const [year, month, day] = datePart.split("-").map(Number);
+
+      // Use Date.UTC to avoid timezone shift
+      const date = new Date(Date.UTC(year, month - 1, day));
+
+      // Format in local style
       return date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
+        timeZone: "UTC", // Treat as UTC to prevent shift
       });
     } catch (e) {
       console.warn("Error formatting date:", dateStr, e);
-      return dateStr; // Return original if parsing fails
+      return dateStr;
     }
   };
 
@@ -80,10 +79,11 @@ const EventReservations = () => {
       if (data?.success) {
         const normalized = data.data.map((row) => ({
           id: row.id || row._id,
-          eventName: (row.event_type && row.event_type !== '0' && row.event_type !== 0) 
-            ? row.event_type 
-            : (row.event_name && row.event_name !== '0' && row.event_name !== 0)
-              ? row.event_name 
+          eventName:
+            row.event_type && row.event_type !== "0" && row.event_type !== 0
+              ? row.event_type
+              : row.event_name && row.event_name !== "0" && row.event_name !== 0
+              ? row.event_name
               : "Event",
           customer: row.customer_name,
           date:
@@ -122,8 +122,12 @@ const EventReservations = () => {
 
       // Check if response is ok
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          errorData.message || `Server error: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -135,13 +139,18 @@ const EventReservations = () => {
         navigate("/owner/event-reservations-logs");
       } else {
         // Show the actual error message from backend
-        const errorMsg = data?.message || data?.error || "Failed to confirm reservation";
+        const errorMsg =
+          data?.message || data?.error || "Failed to confirm reservation";
         alert(`Failed to confirm reservation: ${errorMsg}`);
         console.error("Confirmation failed:", data);
       }
     } catch (error) {
       console.error("Error confirming reservation:", error);
-      alert(`Error confirming reservation: ${error.message || "Network error. Please check your server connection."}`);
+      alert(
+        `Error confirming reservation: ${
+          error.message || "Network error. Please check your server connection."
+        }`
+      );
     } finally {
       setUpdatingId(null);
     }
@@ -241,9 +250,13 @@ const EventReservations = () => {
                     <td className="p-3 border-b">
                       {index + 1 + (currentPage - 1) * itemsPerPage}
                     </td>
-                    <td className="p-3 border-b font-medium">{res.eventName}</td>
+                    <td className="p-3 border-b font-medium">
+                      {res.eventName}
+                    </td>
                     <td className="p-3 border-b">{res.customer}</td>
-                    <td className="p-3 border-b">{formatDateRange(res.date)}</td>
+                    <td className="p-3 border-b">
+                      {formatDateRange(res.date)}
+                    </td>
                     <td className="p-3 border-b">
                       <button
                         onClick={() => handleView(res)}
@@ -342,7 +355,8 @@ const EventReservations = () => {
               <strong>Customer:</strong> {selectedReservation.customer}
             </p>
             <p>
-              <strong>Date(s):</strong> {formatDateRange(selectedReservation.date)}
+              <strong>Date(s):</strong>{" "}
+              {formatDateRange(selectedReservation.date)}
             </p>
 
             {selectedReservation.raw.email && (
@@ -353,7 +367,8 @@ const EventReservations = () => {
 
             {selectedReservation.raw.contact_number && (
               <p>
-                <strong>Contact:</strong> {selectedReservation.raw.contact_number}
+                <strong>Contact:</strong>{" "}
+                {selectedReservation.raw.contact_number}
               </p>
             )}
 

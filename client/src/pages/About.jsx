@@ -23,17 +23,17 @@ const About = () => {
 
   const team = [
     {
-      name: "Juan Dela Cruz",
+      name: "Christian Jay Reyes",
       role: "General Manager",
-      img: "https://source.unsplash.com/400x400/?businessman,portrait",
+      img: "https://www.facebook.com/photo/?fbid=10222611158187294&set=a.1264862481315",
     },
     {
-      name: "Maria Santos",
+      name: "Janna Plata",
       role: "Front Desk Staff",
       img: "https://source.unsplash.com/400x400/?woman,portrait",
     },
     {
-      name: "Carlos Reyes",
+      name: "Jed Estor",
       role: "Head Chef",
       img: "https://source.unsplash.com/400x400/?chef,portrait",
     },

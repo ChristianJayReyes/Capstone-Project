@@ -4,14 +4,9 @@ import { assets } from "../assets/assets";
 import { useNavigate, useLocation } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 
-
-
 const LoginForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showForm, setShowForm] = useState(true);
-
-  const OWNER_EMAIL = "owner@hotel.com";
-  const OWNER_PASSWORD = "owner123";
 
   // Signup states
   const [fullName, setFullName] = useState("");
@@ -86,29 +81,36 @@ const LoginForm = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    if (loginEmail === OWNER_EMAIL && loginPassword === OWNER_PASSWORD) {
-      try {
-        // Mark as owner via localStorage so RequireOwner allows access
-        localStorage.setItem("owner", "true");
-        // Optional: store a minimal user object for consistency
-        const ownerUser = { email: OWNER_EMAIL, role: "hotelOwner", name: "Owner" };
-        localStorage.setItem("user", JSON.stringify(ownerUser));
-        // Optional: set a placeholder token
-        localStorage.setItem("token", "owner-fixed-login");
-        alert("✅ Logged in as Owner");
+    try {
+      const res = await fetch("http://localhost:3000/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        alert("Admin Login Successfully!");
         navigate("/owner");
-        return;
-      } catch (err) {
-        console.error(err);
-        setError("Something went wrong");
-        return;
+      } else {
+        setError(data.message);
       }
+    } catch (error) {
+      console.error(error);
+      setError("Something went wrong");
     }
+
     try {
       const res = await fetch("http://localhost:3000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword, captcha: captchaToken }),
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+          captcha: captchaToken,
+        }),
       });
       const data = await res.json();
       data.success
@@ -369,8 +371,8 @@ const LoginForm = () => {
 
                 <div>
                   <ReCAPTCHA
-                  sitekey="6LcMAQUsAAAAACl5v2ZO4Y-WZuzWLQ6XzeRa0TVJ"
-                  onChange={(token) => setCaptchaToken(token)}
+                    sitekey="6LcMAQUsAAAAACl5v2ZO4Y-WZuzWLQ6XzeRa0TVJ"
+                    onChange={(token) => setCaptchaToken(token)}
                   />
                 </div>
 

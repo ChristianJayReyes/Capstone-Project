@@ -18,6 +18,7 @@ import roomRoutes from "./routes/roomRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import newsletter from "./routes/newsletter.js";
 import eventBookings from "./routes/eventBookings.js";
+import dashboardRoute from "./routes/dashboardRoute.js";
 
 //  Initialize DB + Cloudinary
 connectDB();
@@ -108,6 +109,7 @@ app.use("/api/rooms", roomRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/newsletter", newsletter);
 app.use("/api/eventBookings", eventBookings);
+app.use("/api/dashboard", dashboardRoute);
 
 // Test route
 app.get("/", (req, res) => res.send("API is working fine"));

@@ -5,6 +5,13 @@ import connectDB from "../configs/db.js";
 export const protect = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
+  // Admin Bypass
+  if (req.headers["x-admin-key"] === "your-admin-secret") {
+    req.user = { role: "admin", full_name: "Admin" };
+    return next();
+  }
+
+  // JWT Protection
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res
       .status(401)

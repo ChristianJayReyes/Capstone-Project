@@ -1,13 +1,27 @@
-import e from "express";
-import { checkAvailabilityAPI, createBooking, getHotelBookings, getUserBookings } from "../controllers/bookingController.js";
+import express from "express";
+import { 
+  checkAvailabilityAPI, 
+  createBooking, 
+  getHotelBookings, 
+  getUserBookings,
+  getAllBookings,        
+  updateBookingStatus,
+  getBookingLogs,
+  exportBookingLogs   
+} from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import connectDB from "../configs/db.js";
 
-const bookingRouter = e.Router();
+const bookingRouter = express.Router();
 
 bookingRouter.post('/check-availability', checkAvailabilityAPI);
 bookingRouter.post('/book', protect, createBooking);
 bookingRouter.get('/user', protect, getUserBookings);
 bookingRouter.get('/hotel', protect, getHotelBookings);
 
-export default bookingRouter; 
+// Admin routes
+bookingRouter.get('/admin/all', getAllBookings);
+bookingRouter.post('/admin/update-status', updateBookingStatus);
+bookingRouter.get('/admin/logs', getBookingLogs);
+bookingRouter.get('/admin/logs/export', exportBookingLogs);
+
+export default bookingRouter;

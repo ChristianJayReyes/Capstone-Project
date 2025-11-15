@@ -6,22 +6,18 @@ import Title from '../../components/Title';
 const STATUS_CONFIG = {
   'Confirmed': { 
     color: 'bg-green-100 text-green-700 border-green-200',
-    icon: '✅',
     label: 'Confirmed'
   },
   'Cancelled': { 
     color: 'bg-red-100 text-red-700 border-red-200',
-    icon: '❌',
     label: 'Cancelled'
   },
   'Checked-in': { 
     color: 'bg-blue-100 text-blue-700 border-blue-200',
-    icon: '🔵',
     label: 'Checked-in'
   },
   'Checked-out': { 
     color: 'bg-gray-100 text-gray-700 border-gray-200',
-    icon: '✓',
     label: 'Checked-out'
   },
 };
@@ -39,7 +35,7 @@ const PAYMENT_STATUS_CONFIG = {
     color: 'bg-green-100 text-green-700 border-green-200',
     label: 'Payment Complete'
   },
-  // Legacy support for old values (will be migrated)
+  // Legacy support for old values
   'Paid': {
     color: 'bg-orange-100 text-orange-700 border-orange-200',
     label: 'Partial Payment'
@@ -61,12 +57,21 @@ const PAYMENT_STATUS_OPTIONS = ['All', 'Pending', 'Partial Payment', 'Payment Co
 const BookingLogs = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   useEffect(() => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const res = await fetch('http://localhost:3000/api/logs/getBookingLogs.php');
+        // Updated endpoint to Node.js API
+        const res = await fetch('http://localhost:3000/api/bookings/admin/logs');
         const data = await res.json();
+        
+        if (!data.success) {
+          console.error('Failed to load logs:', data.message);
+          setLogs([]);
+          return;
+        }
+        
         const mapped = (Array.isArray(data.data) ? data.data : []).map((l, idx) => {
           const rawCheckIn = l.check_in;
           const rawCheckOut = l.check_out;
@@ -111,6 +116,7 @@ const BookingLogs = () => {
     };
     fetchLogs();
   }, []);
+  
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('All');
@@ -130,13 +136,13 @@ const BookingLogs = () => {
         log.logId.toLowerCase().includes(searchLower) ||
         log.bookingId.toLowerCase().includes(searchLower) ||
         log.guestName.toLowerCase().includes(searchLower) ||
-  log.room.toLowerCase().includes(searchLower) ||
-  (log.roomType || '').toString().toLowerCase().includes(searchLower) ||
+        log.room.toLowerCase().includes(searchLower) ||
+        (log.roomType || '').toString().toLowerCase().includes(searchLower) ||
         (log.roomNumber || '').toString().toLowerCase().includes(searchLower);
       
       const matchesStatus = statusFilter === 'All' || log.status === statusFilter;
       const matchesPaymentStatus = paymentStatusFilter === 'All' || log.paymentStatus === paymentStatusFilter;
-  const matchesRoomType = roomTypeFilter === 'All' || (log.roomType || '').includes(roomTypeFilter);
+      const matchesRoomType = roomTypeFilter === 'All' || (log.roomType || '').includes(roomTypeFilter);
       
       const matchesDateRange = 
         (!dateRange.start && !dateRange.end) ||
@@ -197,8 +203,8 @@ const BookingLogs = () => {
       
       console.log('Exporting with params:', params.toString());
       
-      // Fetch the CSV file
-      const response = await fetch(`http://localhost:3000/api/logs/exportBookingLogs.php?${params.toString()}`);
+      // Updated endpoint to Node.js API
+      const response = await fetch(`http://localhost:3000/api/bookings/admin/logs/export?${params.toString()}`);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -303,7 +309,6 @@ const BookingLogs = () => {
     }
   };
 
-
   const formatDate = (dateString) => {
     if (!dateString || dateString === '0000-00-00 00:00:00' || dateString === '0000-00-00') return '—';
     const date = new Date(dateString);
@@ -312,8 +317,6 @@ const BookingLogs = () => {
     const year = String(date.getFullYear()).slice(-2);
     return `${month}/${day}/${year}`;
   };
-
-  // formatTime removed because the UI no longer shows the time portion under dates
 
   const formatDateTime = (dateString) => {
     if (!dateString || dateString === '0000-00-00 00:00:00' || dateString === '0000-00-00') return '—';
@@ -327,8 +330,8 @@ const BookingLogs = () => {
   };
 
   return (
-    <div className="w-full flex justify-center">
-      <div className="w-full max-w-7xl px-4">
+    <div className="w-full flex justify-center overflow-x-visible">
+      <div className="w-full max-w-[90rem] px-4">
         {/* Page Header */}
         <div className="mb-8">
           {/* Title and Action Buttons */}
@@ -458,8 +461,8 @@ const BookingLogs = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-          <table className="w-full table-auto min-w-0">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-visible w-full">
+          <table className="min-w-full table-auto">
             <thead className="bg-gray-50">
               <tr>
                 <th className="py-4 px-6 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 whitespace-nowrap" onClick={() => handleSort('logId')}>
@@ -561,7 +564,7 @@ const BookingLogs = () => {
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <div className="font-semibold text-gray-900">{log.guestName}</div>
+                      <div className="text-sm font-semibold text-gray-900">{log.guestName}</div>
                       {log.email && (
                         <div className="text-xs text-gray-500 mt-0.5">{log.email}</div>
                       )}
@@ -573,32 +576,28 @@ const BookingLogs = () => {
                     </td>
                     <td className="py-4 px-6 text-center">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${STATUS_CONFIG[log.status]?.color || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                        <span>{STATUS_CONFIG[log.status]?.icon}</span>
+                                                {STATUS_CONFIG[log.status]?.icon || '•'}
                         {STATUS_CONFIG[log.status]?.label || log.status}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-center whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{log.roomNumber || '—'}</div>
+                    <td className="py-4 px-6 text-center text-sm text-gray-600 whitespace-nowrap">
+                      {log.roomNumber || '—'}
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="font-medium text-gray-900">{log.roomType || '—'}</div>
+                    <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
+                      {log.roomType || '—'}
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-900 text-center">
-                      {log.checkIn && log.checkIn.trim() !== '' ? (
-                        <div>{formatDate(log.checkIn)}</div>
-                      ) : (
-                        <div>—</div>
-                      )}
+                    <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
+                      {formatDate(log.checkIn)}
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-900 text-center">
-                      {log.checkOut && log.checkOut.trim() !== '' ? (
-                        <div>{formatDate(log.checkOut)}</div>
-                      ) : (
-                        <div>—</div>
-                      )}
+                    <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
+                      {formatDate(log.checkOut)}
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-900">{log.lastAction || '—'}</td>
-                    <td className="py-4 px-6 text-sm text-gray-600">{formatDateTime(log.timestamp)}</td>
+                    <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
+                      {log.lastAction || '—'}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
+                      {formatDateTime(log.timestamp)}
+                    </td>
                   </tr>
                 ))
               )}
@@ -607,67 +606,28 @@ const BookingLogs = () => {
         </div>
 
         {/* Pagination */}
-        {!loading && (
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
-            <div className="text-sm text-gray-600">
-              Showing {filteredLogs.length === 0 ? 0 : ((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, filteredLogs.length)} of {filteredLogs.length} logs
-            </div>
-          
-          <div className="flex items-center gap-2">
+        {filteredLogs.length > 0 && (
+          <div className="flex justify-between items-center mt-6 text-sm text-gray-600">
             <button
               onClick={() => handlePageChange(page - 1)}
               disabled={page === 1}
-              className="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className={`px-3 py-1 rounded-lg border ${page === 1 ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'hover:bg-gray-100 border-gray-300'}`}
             >
               Previous
             </button>
-            
-            <div className="flex items-center gap-1">
-              {(() => {
-                const maxVisible = 4;
-                let startPage, endPage;
-                
-                if (totalPages <= maxVisible) {
-                  // Show all pages if total is 4 or less
-                  startPage = 1;
-                  endPage = totalPages;
-                } else {
-                  // Calculate sliding window of 4 pages
-                  // Start from the first page of the current group of 4
-                  startPage = Math.floor((page - 1) / maxVisible) * maxVisible + 1;
-                  endPage = Math.min(startPage + maxVisible - 1, totalPages);
-                }
-                
-                const pages = [];
-                for (let i = startPage; i <= endPage; i++) {
-                  pages.push(i);
-                }
-                
-                return pages.map(pageNum => (
-                  <button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      pageNum === page
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                ));
-              })()}
+            <div className="flex items-center gap-2">
+              <span>Page</span>
+              <strong>{page}</strong>
+              <span>of {totalPages}</span>
             </div>
-            
             <button
               onClick={() => handlePageChange(page + 1)}
-              disabled={page === totalPages || totalPages === 0}
-              className="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={page === totalPages}
+              className={`px-3 py-1 rounded-lg border ${page === totalPages ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'hover:bg-gray-100 border-gray-300'}`}
             >
               Next
             </button>
           </div>
-        </div>
         )}
       </div>
     </div>
@@ -675,4 +635,3 @@ const BookingLogs = () => {
 };
 
 export default BookingLogs;
-

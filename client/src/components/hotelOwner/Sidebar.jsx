@@ -10,10 +10,9 @@ const SideBar = ({ isCollapsed = true, onHoverChange }) => {
     { name: "Dashboard", path: "/owner", icon: assets.dashboardIcon },
     { name: "Bookings", path: "/owner/bookings", icon: assets.calenderIcon },
     { name: "Booking Logs", path: "/owner/booking-logs", icon: assets.bookinglogsIcon },
-    { name: "Guests", path: "/owner/guest", icon: assets.guestIcon },
-    { name: "Rooms", path: "/owner/list-room", icon: assets.listIcon },
-    { name: "Event Reservations", path: "/owner/event-reservations", icon: assets.eventIcon },
-        { name: "Event Reservations Logs", path: "/owner/event-reservations-logs", icon: assets.eventIcon },
+    { name: "Rooms", path: "/owner/add-room", icon: assets.addroomsIcon },
+    { name: "Event Reservations", path: "/owner/event-reservations", icon: assets.calendarIcon },
+    { name: "Event Reservations Logs", path: "/owner/event-reservations-logs", icon: assets.bookinglogsIcon },
     // Optional future items can be added here
   ];
 

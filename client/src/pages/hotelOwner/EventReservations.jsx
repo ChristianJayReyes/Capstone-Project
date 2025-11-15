@@ -7,28 +7,29 @@ const formatDateRange = (dateRange) => {
 
   const [start, end] = dateRange.split(" to ");
 
-  // Helper to parse date as YYYY-MM-DD ignoring timezone
+  // Helper function to format date without timezone issues
   const format = (dateStr) => {
     if (!dateStr) return "Invalid Date";
 
     try {
-      // Extract just the date part (ignore time)
-      const datePart = dateStr.split(" ")[0]; // '2025-11-24'
+      // Handle date strings (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+      const datePart = dateStr.split("T")[0].split(" ")[0]; // Get just YYYY-MM-DD part
       const [year, month, day] = datePart.split("-").map(Number);
 
-      // Use Date.UTC to avoid timezone shift
-      const date = new Date(Date.UTC(year, month - 1, day));
+      // Create date using local time to avoid timezone shifts
+      const date = new Date(year, month - 1, day);
 
-      // Format in local style
+      if (isNaN(date.getTime())) return "Invalid Date";
+
+      // Format as "Nov 26, 2025" using local date components
       return date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
-        timeZone: "UTC", // Treat as UTC to prevent shift
       });
     } catch (e) {
       console.warn("Error formatting date:", dateStr, e);
-      return dateStr;
+      return dateStr; // Return original if parsing fails
     }
   };
 

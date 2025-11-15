@@ -167,24 +167,6 @@ const Navbar = () => {
                   {/* Menu Items */}
                   <div className="flex flex-col py-2">
                     <button
-                      onClick={() => {
-                        navigate("/update-profile");
-                        setProfileMenuOpen(false);
-                      }}
-                      className="w-full text-left px-5 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all flex items-center gap-2"
-                    >
-                      <span>👤</span> Update Profile
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate("/my-bookings");
-                        setProfileMenuOpen(false);
-                      }}
-                      className="w-full text-left px-5 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all flex items-center gap-2"
-                    >
-                      <span>📖</span> My Bookings
-                    </button>
-                    <button
                       onClick={handleLogout}
                       className="w-full text-left px-5 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-all flex items-center gap-2"
                     >

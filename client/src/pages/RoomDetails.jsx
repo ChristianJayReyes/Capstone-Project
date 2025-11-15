@@ -75,7 +75,7 @@ const RoomDetails = () => {
       });
 
       if (data.success) {
-        toast.success("Booking confirmed!");
+        toast.success("Booking confirmed! Check your email for details confirmation.");
         setBookings((prev) => [data.booking, ...prev]);
         setIsOpen(false);
       } else {

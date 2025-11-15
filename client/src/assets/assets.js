@@ -113,6 +113,9 @@ import RRS from "./RRS.png";
 import htm1 from "./htm1.jpg";
 import htm2 from "./htm2.jpg";
 import htm3 from "./htm3.jpg";
+import addroomsIcon from "./addroomsIcon.svg";
+import bookinglogsIcon from "./bookinglogsIcon.svg";
+
 
 
 export const assets = {
@@ -232,6 +235,8 @@ export const assets = {
   htm1,
   htm2,
   htm3,
+  bookinglogsIcon,
+  addroomsIcon,
 };
 
 export const cities = [

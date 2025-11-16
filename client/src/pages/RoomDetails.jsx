@@ -240,7 +240,6 @@ const RoomDetails = () => {
                 id="children"
                 placeholder="0"
                 className="max-w-20 rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none"
-                required
               />
             </div>
 

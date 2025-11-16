@@ -108,15 +108,27 @@ const EventPage = () => {
           contact_number: formData.contactNumber,
           special_request: formData.specialRequest,
           event_type: formData.eventType,
-          event_start_date: range[0].startDate.toISOString().split("T")[0],
-          event_end_date: range[0].endDate.toISOString().split("T")[0],
+          event_start_date: (() => {
+            const date = range[0].startDate;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+          })(),
+          event_end_date: (() => {
+            const date = range[0].endDate;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+          })(),
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(data.message || "Event booked successfully!");
+        toast.success(data.message || "Event booked successfully!, wait for the email confirmation.");
         setOpenForm(false);
         setFormData({
           customerName: "",

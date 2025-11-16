@@ -12,23 +12,47 @@ const formatDateRange = (dateRange) => {
     const [startStr, endStr] = dateRange.split(" to ").map(s => s.trim());
     
     // Format date function that handles various date formats
+    // Use local date components to avoid timezone shifts
     const formatDate = (dateStr) => {
       if (!dateStr) return "Invalid Date";
       
-      // Try to parse the date - handles formats like "2025-11-28", "2025-11-28T00:00:00.000Z", etc.
-      const date = new Date(dateStr.trim());
-      
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
+      try {
+        // Extract just the date part (YYYY-MM-DD) from various formats
+        const datePart = String(dateStr).trim().split("T")[0].split(" ")[0];
+        
+        // Parse manually to avoid timezone issues
+        if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+          const [year, month, day] = datePart.split("-").map(Number);
+          // Create date using local time to avoid timezone shifts
+          const date = new Date(year, month - 1, day);
+          
+          // Check if date is valid
+          if (isNaN(date.getTime())) {
+            return "Invalid Date";
+          }
+          
+          // Format as "Nov 28, 2025" using local date components
+          return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+        } else {
+          // Fallback to standard parsing if format doesn't match
+          const date = new Date(dateStr.trim());
+          if (isNaN(date.getTime())) {
+            return "Invalid Date";
+          }
+          return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+        }
+      } catch (error) {
+        console.warn("Error formatting date:", dateStr, error);
         return "Invalid Date";
       }
-      
-      // Format as "Nov 28, 2025"
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
     };
 
     const formattedStart = formatDate(startStr);

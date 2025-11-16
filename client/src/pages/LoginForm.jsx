@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { motion } from "framer-motion";
 import { assets } from "../assets/assets";
 import { useNavigate, useLocation } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
+import { useAppContext } from "../context/AppContext";
 
 const LoginForm = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,7 +19,7 @@ const LoginForm = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  //Captcha State
+  // Captcha
   const [captchaToken, setCaptchaToken] = useState("");
 
   // OTP states
@@ -35,29 +36,34 @@ const LoginForm = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { loginUser } = useAppContext();
 
-  // Catch Google token
+  // Catch Google login
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get("token");
     const user = params.get("user");
-    if (token && user) {
+
+    if (token && user && user !== "undefined") {
       try {
         const parsedUser = JSON.parse(decodeURIComponent(user));
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(parsedUser));
+        loginUser(parsedUser, token);
         alert("✅ Logged in with Google!");
-        window.location.href = "/";
+        navigate("/");
+
+        // Clean URL
+        window.history.replaceState({}, document.title, "/");
       } catch (err) {
-        console.error("Error parsing Google user:", err);
+        console.error("LoginForm Google parse error:", err);
       }
     }
-  }, [location]);
+  }, [location, loginUser, navigate]);
 
-  // Signup
+  // Signup handler
   const handleSignup = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) return setError("Passwords do not match");
+
     try {
       const res = await fetch("http://localhost:3000/api/auth/register", {
         method: "POST",
@@ -77,33 +83,32 @@ const LoginForm = () => {
     }
   };
 
-  // Login
+  // Login handler
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
 
     try {
-      const res = await fetch("http://localhost:3000/api/auth/admin-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+      // If you want to check admin first
+      const adminRes = await fetch(
+        "http://localhost:3000/api/auth/admin-login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+        }
+      );
+      const adminData = await adminRes.json();
+      if (adminData.success) {
+        localStorage.setItem("token", adminData.token);
+        localStorage.setItem("user", JSON.stringify(adminData.user));
         alert("Admin Login Successfully!");
         navigate("/owner");
-      } else {
-        setError(data.message);
+        return;
       }
-    } catch (error) {
-      console.error(error);
-      setError("Something went wrong");
-    }
 
-    try {
-      const res = await fetch("http://localhost:3000/api/auth/login", {
+      // Only try regular login if not admin
+      const userRes = await fetch("http://localhost:3000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -112,20 +117,25 @@ const LoginForm = () => {
           captcha: captchaToken,
         }),
       });
-      const data = await res.json();
-      data.success
-        ? (alert("📧 OTP sent to your email"),
-          setUserId(data.user_id),
-          setStep(2))
-        : setError(data.message);
-    } catch {
+      const userData = await userRes.json();
+      if (userData.success) {
+        setUserId(userData.user_id);
+        setStep(2); // OTP step
+        alert("📧 OTP sent to your email");
+      } else {
+        setError(userData.message); 
+      }
+    } catch (err) {
+      console.error(err);
       setError("Something went wrong");
     }
   };
 
-  // Verify OTP
+  // Verify OTP handler
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    setError("");
+
     try {
       const res = await fetch("http://localhost:3000/api/auth/verify-otp", {
         method: "POST",
@@ -133,9 +143,9 @@ const LoginForm = () => {
         body: JSON.stringify({ user_id: userId, otp }),
       });
       const data = await res.json();
+
       if (data.success) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        loginUser(data.user, data.token);
         alert("✅ Login successful!");
         navigate("/");
       } else setError(data.message);
@@ -156,7 +166,7 @@ const LoginForm = () => {
         onClick={() => setShowForm(false)}
       />
 
-      {/* Animated Sliding Image */}
+      {/* Sliding Image */}
       <motion.div
         className="absolute top-0 left-0 h-full w-1/2 z-20"
         initial={false}
@@ -210,6 +220,7 @@ const LoginForm = () => {
                 className="border border-gray-300 rounded-full px-5 py-3 outline-none text-sm focus:ring-2 focus:ring-indigo-400 shadow-sm"
                 required
               />
+
               {/* Password Fields */}
               {[
                 {
@@ -249,6 +260,7 @@ const LoginForm = () => {
                   </button>
                 </div>
               ))}
+
               {error && (
                 <p className="text-red-500 text-sm text-center">{error}</p>
               )}
@@ -335,7 +347,6 @@ const LoginForm = () => {
                   className="w-full px-5 py-3 rounded-full border border-gray-300 outline-none text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-indigo-400"
                   required
                 />
-
                 <div className="relative w-full mt-4">
                   <input
                     type={showLoginPassword ? "text" : "password"}
@@ -361,7 +372,6 @@ const LoginForm = () => {
                 </div>
 
                 {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-
                 <button
                   type="submit"
                   className="mt-8 w-full h-11 rounded-full text-white font-medium bg-blue-600 hover:bg-blue-700 hover:shadow-blue-300/50 shadow-md transition"

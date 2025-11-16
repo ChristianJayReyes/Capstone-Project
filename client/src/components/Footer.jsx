@@ -98,7 +98,7 @@ const Footer = () => {
                 </li>
                 <li>
                   <a
-                    href="https://www.google.com/maps/place/Rosario+Resort+and+Hotel+Grand+Pavilion/@13.8603049,121.2040629,17z/data=!3m1!4b1!4m6!3m5!1s0x33bd14489170a66b:0xd45d9221f9f1ea35!8m2!3d13.8602997!4d121.2066378!16s%2Fg%2F11bw66s9rc?entry=ttu"
+                    href="https://www.google.com/maps/place/Rosario+Resort+and+Hotel+Grand+Pavilion/@13.8603049,121.2040629,17z/data=!3m1!4b1!4m6!3m5!1s0x33bd14489170a66b:0xd45d9221f9f1ea35!8m2!3d13.8602997!4d121.2066378!16s%2Fg%2F11bw66s9rc?entry=ttu&g_ep=EgoyMDI1MTExMi4wIKXMDSoASAFQAw%3D%3D"
                     target="_blank"
                     rel="noreferrer"
                     className="hover:text-indigo-400 transition"

@@ -42,3 +42,16 @@
   font-style: normal;
 }
 
+.rdrCalendarWrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.rdrMonth {
+  width: 100% !important;
+}
+
+.rdrMonths {
+  display: block !important; /* Prevents side-by-side layout */
+}
+

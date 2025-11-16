@@ -172,7 +172,8 @@ const About = () => {
             </div>
             <div className="bg-white/20 backdrop-blur-lg p-6 rounded-xl shadow-lg hover:scale-105 transition">
               <h3 className="text-xl font-semibold mb-2">📞 Phone</h3>
-              <p className="text-lg">+63 912 345 6789</p>
+              <p className="text-lg">0949-990-6350 /
+                  0977-806-4396</p>
             </div>
             <div className="bg-white/20 backdrop-blur-lg p-6 rounded-xl shadow-lg hover:scale-105 transition">
               <h3 className="text-xl font-semibold mb-2">📍 Location</h3>

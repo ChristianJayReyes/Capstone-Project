@@ -17,7 +17,7 @@ const ExclusiveOffers = () => {
           title="✨ Exclusive Offers for the month of October!"
           subTitle="Indulge in our limited-time offers crafted to elevate your experience and create timeless memories."
         />
-        <button
+        {/* <button
           className="group flex items-center gap-2 font-medium cursor-pointer max-md:mt-12 bg-black text-white px-5 py-3 rounded-full hover:bg-gradient-to-r hover:from-amber-500 hover:to-pink-500 transition-all duration-300 shadow-md"
           onClick={() => (window.location.href = "/offers")}
         >
@@ -27,7 +27,7 @@ const ExclusiveOffers = () => {
             alt="arrowIcon"
             className="group-hover:translate-x-2 transition-all w-4"
           />
-        </button>
+        </button> */}
       </div>
 
       {/* Offers Grid */}

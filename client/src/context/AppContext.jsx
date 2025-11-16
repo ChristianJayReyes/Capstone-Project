@@ -1,9 +1,7 @@
-
 import axios from "axios";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { set } from "date-fns";
 
 axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL;
 
@@ -20,7 +18,7 @@ export const AppProvider = ({ children }) => {
   const [showHotelReg, setShowHotelReg] = useState(false);
   const [searchedCities, setSearchedCities] = useState([]);
 
-  // 🔹 Unified login method (works for OTP + Google)
+  // Unified login method
   const loginUser = (userData, userToken) => {
     localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("token", userToken);
@@ -28,7 +26,6 @@ export const AppProvider = ({ children }) => {
     setToken(userToken);
   };
 
-  // 🔹 Logout method
   const logoutUser = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
@@ -38,39 +35,38 @@ export const AppProvider = ({ children }) => {
     setSearchedCities([]);
   };
 
-  // 🔹 Handle Google OAuth redirect (catch token + user from URL)
+  // FIXED GOOGLE LOGIN PARSE BUG
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get("token");
     const urlUser = params.get("user");
 
-    if (urlToken && urlUser) {
+    // Prevent crash when user=undefined
+    if (urlToken && urlUser && urlUser !== "undefined") {
       try {
         const parsedUser = JSON.parse(decodeURIComponent(urlUser));
-        localStorage.setItem("token", urlToken);
-        localStorage.setItem("user", JSON.stringify(parsedUser));
+        loginUser(parsedUser, urlToken);
 
-        setToken(urlToken);
-        setUser(parsedUser);
-
-        // clean URL
+        // Clean URL
         window.history.replaceState({}, document.title, "/");
       } catch (err) {
-        console.error("Error parsing Google user:", err);
+        console.error("Google login user parsing failed:", err);
       }
     }
   }, []);
 
-  // 🔹 Load user + token from localStorage on app start
+  // Load from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     const savedToken = localStorage.getItem("token");
+
     if (savedUser) setUser(JSON.parse(savedUser));
     if (savedToken) setToken(savedToken);
 
     const handleStorage = () => {
       const updatedUser = localStorage.getItem("user");
       const updatedToken = localStorage.getItem("token");
+
       setUser(updatedUser ? JSON.parse(updatedUser) : null);
       setToken(updatedToken || null);
     };
@@ -79,13 +75,15 @@ export const AppProvider = ({ children }) => {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  // 🔹 Fetch user details (roles, etc.)
+  // Fetch user details
   const fetchUser = async () => {
-    if (!token) return;
+    if (!token) navigate("/login");
+
     try {
       const { data } = await axios.get("/api/user", {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (data.success) {
         setIsOwner(data.role === "hotelOwner");
         setSearchedCities(data.recentSearchedCities || []);
@@ -96,9 +94,7 @@ export const AppProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (token) {
-      fetchUser();
-    }
+    if (token) fetchUser();
   }, [token]);
 
   const value = {
@@ -118,10 +114,12 @@ export const AppProvider = ({ children }) => {
     loginUser,
     logoutUser,
     bookings,
-    setBookings, 
+    setBookings,
   };
 
-  return (<AppContext.Provider value={value}>{children}</AppContext.Provider>)
+  return (
+    <AppContext.Provider value={value}>{children}</AppContext.Provider>
+  );
 };
 
 export const useAppContext = () => useContext(AppContext);

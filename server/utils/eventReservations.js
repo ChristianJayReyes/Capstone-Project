@@ -1,10 +1,14 @@
 import nodemailer from "nodemailer";
 
+// Use noreplyrosarioresorts@gmail.com as default, or environment variable if set
+const EMAIL_USER = process.env.EMAIL_USER || "noreplyrosarioresorts@gmail.com";
+const EMAIL_PASS = process.env.EMAIL_PASS;
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
   },
 });
 
@@ -27,7 +31,7 @@ export const sendReservationEmail = async (
     : "Thank you for choosing Rosario Resorts and Hotel! Your reservation has been successfully confirmed. Below are your booking details:";
 
   await transporter.sendMail({
-    from: `"Rosario Resorts and Hotel" <${process.env.EMAIL_USER}>`,
+    from: `"Rosario Resorts and Hotel" <${EMAIL_USER}>`,
     to,
     subject,
     html: `
@@ -125,23 +129,58 @@ export const sendEventReservationEmail = async (to, eventDetails, status) => {
     ? "Thank you for choosing Rosario Resorts and Hotel! Your event reservation has been successfully confirmed. Below are your event details:"
     : "We regret to inform you that your event reservation has been declined. Please see the details below:";
 
-  // Format date
+  // Format date using local date components to avoid timezone shifts
   const formatDate = (dateInput) => {
     if (!dateInput) return "N/A";
     try {
-      const date = new Date(dateInput);
-      return date.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
+      let date;
+      if (dateInput instanceof Date) {
+        date = dateInput;
+      } else if (typeof dateInput === "string") {
+        // Handle YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format
+        const dateStr = dateInput.split("T")[0].split(" ")[0]; // Get just YYYY-MM-DD part
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          const [year, month, day] = dateStr.split("-").map(Number);
+          // Create date using local time to avoid timezone shifts
+          date = new Date(year, month - 1, day);
+        } else {
+          date = new Date(dateInput);
+        }
+      } else {
+        date = new Date(dateInput);
+      }
+      
+      if (isNaN(date.getTime())) {
+        return String(dateInput).split("T")[0].split(" ")[0] || "N/A";
+      }
+      
+      // Manual formatting using local date components to avoid timezone shifts
+      const year = date.getFullYear();
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      const month = monthNames[date.getMonth()];
+      const day = date.getDate();
+      return `${month} ${day}, ${year}`;
     } catch (e) {
-      return String(dateInput).split("T")[0];
+      // Fallback: try to extract date part from string
+      const dateStr = String(dateInput).split("T")[0].split(" ")[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [year, month, day] = dateStr.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+      return dateStr || "N/A";
     }
   };
 
   await transporter.sendMail({
-    from: `"Rosario Resorts and Hotel" <${process.env.EMAIL_USER}>`,
+    from: `"Rosario Resorts and Hotel" <${EMAIL_USER}>`,
     to,
     subject,
     html: `

@@ -1,5 +1,6 @@
 import express from "express";
 import connectDB from "../configs/db.js";
+import { sendEventReservationEmail } from "../utils/eventReservations.js";
 
 const router = express.Router();
 
@@ -23,26 +24,47 @@ router.get("/", async (req, res) => {
     );
 
     // Format dates to ensure they're in YYYY-MM-DD format for consistent parsing
+    // Use local date components to avoid timezone shifts
     const formatDate = (date) => {
       if (!date) return null;
       // If it's already a string in YYYY-MM-DD format, return it
+      if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return date;
+      }
+      // If it's a string with datetime, extract just the date part
       if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date)) {
-        return date.split("T")[0]; // Get just the date part if there's time
+        return date.split("T")[0].split(" ")[0]; // Get just YYYY-MM-DD part
       }
-      // If it's a Date object, format it
-      if (date instanceof Date) {
-        return date.toISOString().split("T")[0];
-      }
-      // Otherwise, try to parse it
+      // If it's a Date object or needs parsing, use local date components
       try {
-        const parsed = new Date(date);
-        if (!isNaN(parsed.getTime())) {
-          return parsed.toISOString().split("T")[0];
+        let dateObj;
+        if (date instanceof Date) {
+          dateObj = date;
+        } else {
+          // Parse the date string manually to avoid timezone issues
+          const dateStr = String(date).split("T")[0].split(" ")[0];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split("-").map(Number);
+            dateObj = new Date(year, month - 1, day);
+          } else {
+            dateObj = new Date(date);
+          }
         }
+        
+        if (isNaN(dateObj.getTime())) {
+          console.warn("Invalid date:", date);
+          return null;
+        }
+        
+        // Use local date components to avoid timezone shifts
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const day = String(dateObj.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
       } catch (e) {
-        console.warn("Could not parse date:", date);
+        console.warn("Could not parse date:", date, e);
+        return null;
       }
-      return date;
     };
 
     const formattedRows = rows.map((row) => ({
@@ -188,6 +210,7 @@ router.post("/", async (req, res) => {
     const db = await connectDB();
 
     // Helper function to format date to YYYY-MM-DD (handles various input formats)
+    // Use local date components to avoid timezone shifts
     const formatDate = (dateInput) => {
       if (!dateInput) return null;
 
@@ -199,19 +222,36 @@ router.post("/", async (req, res) => {
         return dateInput;
       }
 
-      // Try to parse as Date and format
+      // Try to parse and format using local date components
       try {
-        const date = new Date(dateInput);
+        let date;
+        if (typeof dateInput === "string") {
+          // Extract just the date part if it's a datetime string
+          const dateStr = dateInput.split("T")[0].split(" ")[0];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            // Parse manually to avoid timezone issues
+            const [year, month, day] = dateStr.split("-").map(Number);
+            date = new Date(year, month - 1, day);
+          } else {
+            date = new Date(dateInput);
+          }
+        } else if (dateInput instanceof Date) {
+          date = dateInput;
+        } else {
+          date = new Date(dateInput);
+        }
+        
         if (isNaN(date.getTime())) {
           throw new Error("Invalid date");
         }
+        
         // Use local date components to avoid timezone shifts
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       } catch (e) {
-        console.warn("Could not parse date:", dateInput);
+        console.warn("Could not parse date:", dateInput, e);
         return dateInput; // Return as-is if parsing fails
       }
     };
@@ -1110,6 +1150,37 @@ router.put("/:id/status", async (req, res) => {
         // Note: We continue - the reservation status update still succeeds
         // But we should investigate why logging failed
         // The confirmation will still be successful even if logging fails
+      }
+    }
+
+    // Send email notification when status is updated to "Confirmed" or "Cancelled"
+    if (statusUpdated && (status === "Confirmed" || status === "Cancelled")) {
+      try {
+        const customerEmail = booking.email;
+        if (customerEmail) {
+          console.log(`📧 Sending ${status} email to: ${customerEmail}`);
+          
+          // Prepare event details for email
+          const eventDetails = {
+            customer_name: booking.customer_name || "Guest",
+            event_type: booking.event_type || booking.event_name || "N/A",
+            event_name: booking.event_name || booking.event_type || "N/A",
+            event_start_date: booking.event_start_date,
+            event_end_date: booking.event_end_date,
+            contact_number: booking.contact_number || "N/A",
+            special_request: booking.special_request || null,
+          };
+
+          await sendEventReservationEmail(customerEmail, eventDetails, status);
+          console.log(`✅ Email sent successfully to ${customerEmail}`);
+        } else {
+          console.warn("⚠️ No email address found for booking, skipping email notification");
+        }
+      } catch (emailError) {
+        // Log error but don't fail the request if email fails
+        console.error("❌ Error sending email notification:", emailError.message);
+        console.error("   Confirmation still succeeded, but email was not sent");
+        // Continue - the status update still succeeds even if email fails
       }
     }
 

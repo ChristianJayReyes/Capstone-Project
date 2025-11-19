@@ -21,15 +21,12 @@ const Navbar = () => {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const location = useLocation();
-  const { navigate, isOwner, setShowHotelReg } = useAppContext();
+  const { navigate, isOwner, setShowHotelReg, user, logoutUser } = useAppContext();
 
-  // Load user from localStorage
+  // Sync with AppContext user state
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (user) {
-      setCurrentUser(JSON.parse(user));
-    }
-  }, []);
+    setCurrentUser(user);
+  }, [user]);
   useEffect(() => {
     const clockElement = document.getElementById("dropdown-clock");
 
@@ -68,8 +65,7 @@ const Navbar = () => {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    logoutUser();
     setCurrentUser(null);
     setProfileMenuOpen(false);
     navigate("/");

@@ -4,6 +4,7 @@ import { assets } from "../assets/assets";
 import { useNavigate, useLocation } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useAppContext } from "../context/AppContext";
+import Swal from "sweetalert2";
 
 const LoginForm = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -27,7 +28,18 @@ const LoginForm = () => {
   const [userId, setUserId] = useState(null);
   const [otp, setOtp] = useState("");
 
+  // Forgot password states
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // Eye icon states
   const [showPassword, setShowPassword] = useState(false);
@@ -38,18 +50,39 @@ const LoginForm = () => {
   const location = useLocation();
   const { loginUser } = useAppContext();
 
-  // Catch Google login
+  // Catch Google login and password reset token
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get("token");
     const user = params.get("user");
 
+    // Check if this is a password reset token (from email link)
+    // Reset password URLs have token but no user parameter
+    if (location.pathname === "/reset-password" && token && !user) {
+      setResetToken(token);
+      setShowResetPassword(true);
+      setIsLogin(true);
+      setShowForm(true);
+      // Clean URL but keep the path
+      window.history.replaceState({}, document.title, "/reset-password");
+      return;
+    }
+
+    // Handle Google OAuth callback
     if (token && user && user !== "undefined") {
       try {
         const parsedUser = JSON.parse(decodeURIComponent(user));
         loginUser(parsedUser, token);
-        alert("✅ Logged in with Google!");
-        navigate("/");
+        setShowForm(false);
+        Swal.fire({
+          icon: "success",
+          title: "Logged in with Google!",
+          text: "Welcome back!",
+          timer: 2000,
+          showConfirmButton: false,
+        }).then(() => {
+          navigate("/");
+        });
 
         // Clean URL
         window.history.replaceState({}, document.title, "/");
@@ -146,9 +179,124 @@ const LoginForm = () => {
 
       if (data.success) {
         loginUser(data.user, data.token);
-        alert("✅ Login successful!");
-        navigate("/");
+        setShowForm(false);
+        setStep(1);
+        setOtp("");
+        setUserId(null);
+        Swal.fire({
+          icon: "success",
+          title: "Login Successful!",
+          text: "Welcome back!",
+          timer: 2000,
+          showConfirmButton: false,
+        }).then(() => {
+          navigate("/");
+        });
       } else setError(data.message);
+    } catch {
+      setError("Something went wrong");
+    }
+  };
+
+  // Forgot password handler
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetch("http://localhost:3000/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotPasswordEmail }),
+      });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        console.error("Error parsing response:", parseErr);
+        setError("Server error: Invalid response from server");
+        return;
+      }
+
+      if (!res.ok) {
+        // Server returned an error status
+        setError(data.message || `Server error (${res.status})`);
+        return;
+      }
+
+      if (data.success) {
+        setShowForgotPassword(false);
+        setForgotPasswordEmail("");
+        setError("");
+        {
+          setSuccess("Password reset link has been sent to your email!");
+          // Show success toast
+          Swal.fire({
+            icon: "success",
+            title: "Email Sent!",
+            text: "Password reset link has been sent to your email.",
+            timer: 3000,
+            showConfirmButton: false,
+          });
+        }
+      } else {
+        setError(data.message || "Failed to send reset link");
+      }
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      setError(err.message || "Network error. Please check your connection and try again.");
+    }
+  };
+
+  // Reset password handler
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (newPassword !== confirmNewPassword) {
+      return setError("Passwords do not match");
+    }
+
+    try {
+      const res = await fetch("http://localhost:3000/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: resetToken,
+          newPassword,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setShowResetPassword(false);
+        setResetToken("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setIsLogin(true);
+        
+        // Show sweet alert
+        Swal.fire({
+          icon: "success",
+          title: "Password Reset Successful!",
+          text: "Your password has been reset successfully. You can now login with your new password.",
+          confirmButtonText: "Go to Login",
+          confirmButtonColor: "#4f46e5",
+        }).then(() => {
+          // Navigate to login page
+          if (location.pathname === "/reset-password") {
+            navigate("/login");
+            window.history.replaceState({}, document.title, "/login");
+          } else {
+            setShowForm(true);
+          }
+        });
+      } else {
+        setError(data.message);
+      }
     } catch {
       setError("Something went wrong");
     }
@@ -379,6 +527,14 @@ const LoginForm = () => {
                   Login
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="mt-2 text-sm text-indigo-500 hover:underline"
+                >
+                  Forgot Password?
+                </button>
+
                 <div>
                   <ReCAPTCHA
                     sitekey="6LcMAQUsAAAAACl5v2ZO4Y-WZuzWLQ6XzeRa0TVJ"
@@ -387,7 +543,7 @@ const LoginForm = () => {
                 </div>
 
                 <p className="text-gray-600 text-sm mt-6">
-                  Don’t have an account?{" "}
+                  Don't have an account?{" "}
                   <button
                     type="button"
                     onClick={() => setIsLogin(false)}
@@ -429,6 +585,167 @@ const LoginForm = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl p-8 w-[400px] max-w-[90vw] relative"
+          >
+            <img
+              src={assets.closeIcon}
+              alt="close"
+              className="absolute top-4 right-4 h-5 w-5 cursor-pointer hover:scale-110 transition"
+              onClick={() => {
+                setShowForgotPassword(false);
+                setForgotPasswordEmail("");
+                setError("");
+                setSuccess("");
+              }}
+            />
+            <h2 className="text-3xl font-bold text-blue-600 mb-2">
+              Forgot Password?
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+            <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+              <input
+                type="email"
+                placeholder="Email"
+                value={forgotPasswordEmail}
+                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                className="w-full px-5 py-3 rounded-full border border-gray-300 outline-none text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-indigo-400"
+                required
+              />
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {success && <p className="text-green-500 text-sm">{success}</p>}
+              <button
+                type="submit"
+                className="w-full h-11 rounded-full text-white font-medium bg-indigo-500 hover:bg-indigo-600 shadow-md transition mt-2"
+              >
+                Send Reset Link
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setForgotPasswordEmail("");
+                  setError("");
+                  setSuccess("");
+                }}
+                className="text-sm text-gray-500 hover:text-indigo-500"
+              >
+                Back to Login
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetPassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl p-8 w-[400px] max-w-[90vw] relative"
+          >
+            <img
+              src={assets.closeIcon}
+              alt="close"
+              className="absolute top-4 right-4 h-5 w-5 cursor-pointer hover:scale-110 transition"
+              onClick={() => {
+                setShowResetPassword(false);
+                setResetToken("");
+                setNewPassword("");
+                setConfirmNewPassword("");
+                setError("");
+                setSuccess("");
+              }}
+            />
+            <h2 className="text-3xl font-bold text-blue-600 mb-2">
+              Reset Password
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Enter your new password below.
+            </p>
+            <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="New Password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-5 py-3 rounded-full border border-gray-300 outline-none text-sm text-gray-700 pr-10 shadow-sm focus:ring-2 focus:ring-indigo-400"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500"
+                >
+                  <img
+                    src={showNewPassword ? assets.eyeOpen : assets.eyeClosed}
+                    alt="Toggle password"
+                    className="h-5 w-5"
+                  />
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showConfirmNewPassword ? "text" : "password"}
+                  placeholder="Confirm New Password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="w-full px-5 py-3 rounded-full border border-gray-300 outline-none text-sm text-gray-700 pr-10 shadow-sm focus:ring-2 focus:ring-indigo-400"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500"
+                >
+                  <img
+                    src={showConfirmNewPassword ? assets.eyeOpen : assets.eyeClosed}
+                    alt="Toggle password"
+                    className="h-5 w-5"
+                  />
+                </button>
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {success && <p className="text-green-500 text-sm">{success}</p>}
+              <button
+                type="submit"
+                disabled={!newPassword || !confirmNewPassword || newPassword !== confirmNewPassword}
+                className={`w-full h-11 rounded-full text-white font-medium shadow-md transition mt-2 ${
+                  !newPassword || !confirmNewPassword || newPassword !== confirmNewPassword
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-indigo-500 hover:bg-indigo-600"
+                }`}
+              >
+                Reset Password
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setResetToken("");
+                  setNewPassword("");
+                  setConfirmNewPassword("");
+                  setError("");
+                  setSuccess("");
+                }}
+                className="text-sm text-gray-500 hover:text-indigo-500"
+              >
+                Cancel
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

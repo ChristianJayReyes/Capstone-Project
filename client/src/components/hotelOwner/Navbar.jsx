@@ -3,7 +3,7 @@ import { assets } from '../../assets/assets'
 import { Link, useNavigate } from 'react-router-dom'
 import { FaSignOutAlt } from 'react-icons/fa'
 
-const NavBar = ({ onToggleSidebar }) => {
+const Navbar = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -57,4 +57,4 @@ const NavBar = ({ onToggleSidebar }) => {
   )
 }
 
-export default NavBar
+export default Navbar

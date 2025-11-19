@@ -190,7 +190,7 @@ router.get(
     const userData = encodeURIComponent(JSON.stringify(req.user));
 
     // redirect to frontend with both
-    res.redirect(`http://localhost:5173?token=${token}&user=${userData}`);
+    res.redirect(`https://rosario-resort-and-hotel.vercel.app?token=${token}&user=${userData}`);
   }
 );
 
@@ -289,7 +289,7 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     // Create reset URL
-    const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}`;
+    const resetUrl = `https://rosario-resort-and-hotel.vercel.app/reset-password?token=${resetToken}`;
 
     // Send reset email
     try {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import Navbar from '../../components/hotelOwner/Navbar'
-import Sidebar from '../../components/hotelOwner/Sidebar'
+import Navbar from '../../components/hotelOwner/Navbar.jsx'
+import Sidebar from '../../components/hotelOwner/Sidebar.jsx'
 import { Outlet } from 'react-router-dom'
 
 const Layout = () => {

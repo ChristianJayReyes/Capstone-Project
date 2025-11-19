@@ -114,7 +114,7 @@ export const createBooking = async (req, res) => {
         children,
         totalPrice,
         isPaid ? "paid" : "unpaid",
-        "Confirmed",
+        "Pending",
       ]
     );
 

@@ -3,7 +3,7 @@ import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { assets } from "../../assets/assets";
 
-const SideBar = ({ isCollapsed = true, onHoverChange }) => {
+const Sidebar = ({ isCollapsed = true, onHoverChange }) => {
   const location = useLocation();
 
   const sidebarLinks = [
@@ -54,5 +54,5 @@ const SideBar = ({ isCollapsed = true, onHoverChange }) => {
   );
 };
 
-export default SideBar;
+export default Sidebar;
 

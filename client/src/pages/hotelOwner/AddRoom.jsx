@@ -5,7 +5,7 @@ import RoomFormModal from "./AddRoomForm";
 import RoomTable from "./RoomTable";
 
 const ITEMS_PER_PAGE = 7;
-const API_BASE = import.meta.env.VITE_API_BASE_ROOMS || "http://localhost:3000/api/rooms";
+const API_BASE = import.meta.env.VITE_API_BASE_ROOMS || "https://rrh-backend.vercel.app/api/rooms";
 
 const roomTypesList = [
   "Dormitory Room",

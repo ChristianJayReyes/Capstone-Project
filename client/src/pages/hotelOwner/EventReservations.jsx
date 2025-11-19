@@ -74,7 +74,7 @@ const EventReservations = () => {
   const fetchReservations = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:3000/api/eventBookings");
+      const res = await fetch("https://rrh-backend.vercel.app/api/eventBookings");
       const data = await res.json();
 
       if (data?.success) {
@@ -110,7 +110,7 @@ const EventReservations = () => {
   const handleConfirm = async (id) => {
     try {
       setUpdatingId(id);
-      const url = `http://localhost:3000/api/eventBookings/${id}/status`;
+      const url = `https://rrh-backend.vercel.app/api/eventBookings/${id}/status`;
 
       const response = await fetch(url, {
         method: "PUT",
@@ -161,7 +161,7 @@ const EventReservations = () => {
     try {
       setUpdatingId(id);
       const response = await fetch(
-        `http://localhost:3000/api/eventBookings/${id}/status`,
+        `https://rrh-backend.vercel.app/api/eventBookings/${id}/status`,
         {
           method: "PUT",
           headers: {

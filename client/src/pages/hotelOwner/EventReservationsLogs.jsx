@@ -83,7 +83,7 @@ const EventReservationsLogs = () => {
       try {
         setLoading(true);
 
-        const res = await fetch("http://localhost:3000/api/eventBookings/logs");
+        const res = await fetch("https://rrh-backend.vercel.app/api/eventBookings/logs");
         const data = await res.json();
 
         if (data?.success && data.data.length > 0) {
@@ -139,7 +139,7 @@ const EventReservationsLogs = () => {
 
           setConfirmedReservations(confirmed);
         } else {
-          const fallbackRes = await fetch("http://localhost:3000/api/eventBookings");
+          const fallbackRes = await fetch("https://rrh-backend.vercel.app/api/eventBookings");
           const fallbackData = await fallbackRes.json();
 
           if (fallbackData?.success) {

@@ -102,8 +102,8 @@ const Bookings = () => {
   const [cancelModal, setCancelModal] = useState({ open: false, booking: null });
 
   //API endpoints
-  const BOOKINGS_API = 'http://localhost:3000/api/bookings/admin/all'; 
-  const UPDATE_STATUS_API = 'http://localhost:3000/api/bookings/admin/update-status'; 
+  const BOOKINGS_API = 'https://rrh-backend.vercel.app/api/bookings/admin/all'; 
+  const UPDATE_STATUS_API = 'https://rrh-backend.vercel.app/api/bookings/admin/update-status'; 
 
   const { token: contextToken } = useAppContext();
 

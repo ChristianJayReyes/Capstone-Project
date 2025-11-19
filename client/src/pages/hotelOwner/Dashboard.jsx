@@ -102,9 +102,9 @@ const Dashboard = () => {
         : '';
 
       const [statsRes, recentRes, monthlyRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/dashboard/stats${queryString}`),
-        fetch(`http://localhost:3000/api/dashboard/recent-bookings?limit=5${dateParams ? `&start=${dateParams.start}&end=${dateParams.end}` : ''}`),
-        fetch(`http://localhost:3000/api/dashboard/trends${queryString}`)
+        fetch(`https://rrh-backend.vercel.app/api/dashboard/stats${queryString}`),
+        fetch(`https://rrh-backend.vercel.app/api/dashboard/recent-bookings?limit=5${dateParams ? `&start=${dateParams.start}&end=${dateParams.end}` : ''}`),
+        fetch(`https://rrh-backend.vercel.app/api/dashboard/trends${queryString}`)
       ]);
 
       const [statsData, recentData, monthlyData] = await Promise.all([

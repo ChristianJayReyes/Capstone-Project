@@ -118,7 +118,7 @@ const RoomDetails = () => {
     e.preventDefault();
     try {
       const response = await fetch(
-        `https://rosario-resort-and-hotel.vercel.app/api/rooms/check/${selectedRoom}`
+        `https://rrh-backend.vercel.app/api/rooms/check/${selectedRoom}`
       );
       const data = await response.json();
 

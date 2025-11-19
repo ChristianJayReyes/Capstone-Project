@@ -12,7 +12,7 @@ const NewsLetter = () => {
       setMessage("Please enter a valid email");
       return;
     }
-    const response = await fetch("https://rosario-resort-and-hotel.vercel.app/api/newsletter/subscribe", {
+    const response = await fetch("https://rrh-backend.vercel.app/api/newsletter/subscribe", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

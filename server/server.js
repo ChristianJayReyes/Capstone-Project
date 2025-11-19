@@ -47,7 +47,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID, // from Google Cloud Console
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://rosario-resort-and-hotel.vercel.app/api/auth/google/callback",
+      callbackURL: "https://rrh-backend.vercel.app/api/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

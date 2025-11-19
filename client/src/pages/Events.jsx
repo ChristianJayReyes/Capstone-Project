@@ -96,7 +96,7 @@ const EventPage = () => {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:3000/api/eventBookings", {
+      const response = await fetch("https://rosario-resort-and-hotel.vercel.app/api/eventBookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

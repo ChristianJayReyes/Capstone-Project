@@ -98,7 +98,7 @@ const LoginForm = () => {
     if (password !== confirmPassword) return setError("Passwords do not match");
 
     try {
-      const res = await fetch("http://localhost:3000/api/auth/register", {
+      const res = await fetch("https://rosario-resort-and-hotel.vercel.app/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +124,7 @@ const LoginForm = () => {
     try {
       // If you want to check admin first
       const adminRes = await fetch(
-        "http://localhost:3000/api/auth/admin-login",
+        "https://rosario-resort-and-hotel.vercel.app/api/auth/admin-login",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -141,7 +141,7 @@ const LoginForm = () => {
       }
 
       // Only try regular login if not admin
-      const userRes = await fetch("http://localhost:3000/api/auth/login", {
+      const userRes = await fetch("https://rosario-resort-and-hotel.vercel.app/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -170,7 +170,7 @@ const LoginForm = () => {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:3000/api/auth/verify-otp", {
+      const res = await fetch("https://rosario-resort-and-hotel.vercel.app/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, otp }),
@@ -205,7 +205,7 @@ const LoginForm = () => {
     setSuccess("");
 
     try {
-      const res = await fetch("http://localhost:3000/api/auth/forgot-password", {
+      const res = await fetch("https://rosario-resort-and-hotel.vercel.app/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotPasswordEmail }),
@@ -261,7 +261,7 @@ const LoginForm = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:3000/api/auth/reset-password", {
+      const res = await fetch("https://rosario-resort-and-hotel.vercel.app/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -463,7 +463,7 @@ const LoginForm = () => {
                 </p>
 
                 <a
-                  href="http://localhost:3000/api/auth/google"
+                  href="https://rosario-resort-and-hotel.vercel.app/api/auth/google"
                   className="w-full"
                 >
                   <button

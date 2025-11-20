@@ -213,7 +213,7 @@ router.post("/admin-login", (req, res) => {
   } else {
     return res.status(401).json({ success: false, message: "Invalid credentials"});
   }
-})
+});
 
 // --- Forgot Password ---
 router.post("/forgot-password", async (req, res) => {

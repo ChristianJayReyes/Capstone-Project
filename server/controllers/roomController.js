@@ -79,6 +79,12 @@ export const getOwnerRooms = async (req, res) => {
 //API to toggle availability of a room
 export const checkRoomAvailability = async (req, res) => {
   try {
+    // Set CORS headers explicitly
+    res.header('Access-Control-Allow-Origin', 'https://rosario-resort-and-hotel.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+
     const { room_number } = req.params;
 
     const db = await connectDB();
@@ -91,6 +97,14 @@ export const checkRoomAvailability = async (req, res) => {
 
     const room = results[0];
  
+    // Check if room status is Booked or Maintenance - exclude these
+    if (room.status && (room.status.toLowerCase() === "booked" || room.status.toLowerCase() === "maintenance")) {
+      return res.json({
+        success: false,
+        message: "This room is not available.",
+      });
+    }
+
     if (room.status !== "available") {
       return res.json({
         success: false,

@@ -25,7 +25,40 @@ connectDB();
 connectCloudinary();
 
 const app = express();
-app.use(cors());
+
+// Configure CORS to allow requests from frontend
+const allowedOrigins = [
+  'https://rosario-resort-and-hotel.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'https://rrh-backend.vercel.app',
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // For development, allow all origins
+      if (process.env.NODE_ENV !== 'production') {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all for now, can restrict later
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Type'],
+  maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(bodyParser.json());
 

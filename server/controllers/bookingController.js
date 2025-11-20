@@ -1,6 +1,11 @@
 // server/controllers/bookingController.js
 import connectDB from "../configs/db.js";
 import { sendReservationEmail } from "../utils/reservationEmail.js";
+import { v2 as cloudinary } from "cloudinary";
+import connectCloudinary from "../configs/cloudinary.js";
+
+// Initialize Cloudinary
+connectCloudinary();
 
 // ✅ Function to check room availability
 const checkAvailability = async ({ checkInDate, checkOutDate, roomId }) => {
@@ -48,75 +53,155 @@ export const checkAvailabilityAPI = async (req, res) => {
 // POST /api/bookings/book
 export const createBooking = async (req, res) => {
   try {
-    const {
-      email,
-      roomId,
-      roomNumber,
-      checkInDate,
-      checkOutDate,
-      guests,
-      totalPrice,
-      isPaid,
-    } = req.body;
+    // Handle FormData (multipart/form-data)
+    // Note: FormData fields come as strings, need to parse numbers
+    const email = req.body.email;
+    const roomId = req.body.roomId;
+    const roomNumber = req.body.roomNumber || null; // Can be null, will be assigned by admin
+    const checkInDate = req.body.checkInDate;
+    const checkOutDate = req.body.checkOutDate;
+    const adults = parseInt(req.body.adults) || 1;
+    const children = parseInt(req.body.children) || 0;
+    const totalPrice = parseFloat(req.body.totalPrice) || 0;
+    const basePrice = parseFloat(req.body.basePrice) || totalPrice;
+    const discountAmount = parseFloat(req.body.discountAmount) || 0;
+    const isPaid = req.body.isPaid === "true" || req.body.isPaid === true;
+    const discountType = req.body.discountType || "None";
+    
+    // Additional guest information
+    const guestName = req.body.guestName || "";
+    const phoneNumber = req.body.phoneNumber || "";
+    const address = req.body.address || "";
+    const nationality = req.body.nationality || "";
+    const deposit = parseFloat(req.body.deposit) || 0;
+    const paymentMode = req.body.paymentMode || "Cash";
+    const signature = req.body.signature || "";
+    const remarks = req.body.remarks || "";
 
     console.log("📥 Received booking data:", req.body);
 
     const db = await connectDB();
+
+    // Upload ID image to Cloudinary if provided
+    let idImageUrl = null;
+    if (req.file) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: "booking_ids",
+          resource_type: "image",
+        });
+        idImageUrl = uploadResult.secure_url;
+        console.log("✅ ID image uploaded to Cloudinary:", idImageUrl);
+      } catch (cloudinaryError) {
+        console.error("❌ Error uploading ID image:", cloudinaryError);
+        // Continue without ID image if upload fails
+      }
+    }
 
     //  Convert ISO date to MySQL DATE format (YYYY-MM-DD)
     const formatDate = (date) => new Date(date).toISOString().slice(0, 10);
     const formattedCheckIn = formatDate(checkInDate);
     const formattedCheckOut = formatDate(checkOutDate);
 
-    //  Extract adults and children
-    const adults = parseInt(guests.adults) || 0;
-    const children = parseInt(guests.children) || 0;
+    // Adults and children are already parsed above
+    const adultsCount = adults;
+    const childrenCount = children;
 
-    //  Check if the room is already booked within the selected range
-    const [existingBookings] = await db.query(
-      `SELECT * FROM bookings
-       WHERE room_number = ?
-       AND (
-         (check_in <= ? AND check_out >= ?) OR
-         (check_in <= ? AND check_out >= ?) OR
-         (? <= check_in AND ? >= check_out)
-       )`,
-      [
-        roomNumber,
-        formattedCheckIn,
-        formattedCheckIn,
-        formattedCheckOut,
-        formattedCheckOut,
-        formattedCheckIn,
-        formattedCheckOut,
-      ]
-    );
+    //  Check if the room type is already booked within the selected range
+    // Note: Room number can be null (will be assigned by admin)
+    // We check availability by room_type_id instead
+    if (roomNumber) {
+      const [existingBookings] = await db.query(
+        `SELECT * FROM bookings
+         WHERE room_number = ?
+         AND (
+           (check_in <= ? AND check_out >= ?) OR
+           (check_in <= ? AND check_out >= ?) OR
+           (? <= check_in AND ? >= check_out)
+         )`,
+        [
+          roomNumber,
+          formattedCheckIn,
+          formattedCheckIn,
+          formattedCheckOut,
+          formattedCheckOut,
+          formattedCheckIn,
+          formattedCheckOut,
+        ]
+      );
 
-    if (existingBookings.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "❌ This room is already booked for the selected dates.",
-      });
+      if (existingBookings.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "❌ This room is already booked for the selected dates.",
+        });
+      }
     }
 
-    //  Insert new booking record
-    const [result] = await db.query(
-      `INSERT INTO bookings 
-        (user_id, room_type_id, room_number, check_in, check_out, adults, children, total_price, payment_status, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.user_id || null,
-        roomId,
-        roomNumber,
-        formattedCheckIn,
-        formattedCheckOut,
-        adults,
-        children,
-        totalPrice,
-        isPaid ? "paid" : "unpaid",
-        "Pending",
-      ]
-    );
+    // Build dynamic INSERT query based on available columns
+    // Base columns that always exist
+    let insertQuery = `INSERT INTO bookings 
+      (user_id, room_type_id, room_number, check_in, check_out, adults, children, total_price, payment_status, status`;
+    let insertValues = [
+      req.user.user_id || null,
+      roomId,
+      roomNumber || null, // Can be NULL, assigned by admin later
+      formattedCheckIn,
+      formattedCheckOut,
+      adultsCount,
+      childrenCount,
+      totalPrice,
+      isPaid === "true" || isPaid === true ? "paid" : "unpaid",
+      "Pending",
+    ];
+    let placeholders = Array(10).fill("?").join(", ");
+
+    // Check and add optional columns if they exist
+    const optionalColumns = [
+      { name: 'id_image_url', value: idImageUrl },
+      { name: 'discount_type', value: discountType || "None" },
+      { name: 'base_price', value: basePrice || totalPrice },
+      { name: 'discount_amount', value: discountAmount || 0 },
+    ];
+
+    for (const col of optionalColumns) {
+      try {
+        const [columns] = await db.query(`SHOW COLUMNS FROM bookings LIKE '${col.name}'`);
+        if (columns.length > 0) {
+          insertQuery += `, ${col.name}`;
+          insertValues.push(col.value);
+          placeholders += ", ?";
+        }
+      } catch (error) {
+        console.log(`${col.name} column may not exist, skipping...`);
+      }
+    }
+
+    // Add notes field if we have additional info to store
+    try {
+      const [notesCol] = await db.query("SHOW COLUMNS FROM bookings LIKE 'notes'");
+      if (notesCol.length > 0) {
+        const notesData = {
+          guestName: guestName || "",
+          phoneNumber: phoneNumber || "",
+          address: address || "",
+          nationality: nationality || "",
+          deposit: deposit || 0,
+          paymentMode: paymentMode || "Cash",
+          signature: signature || "",
+          remarks: remarks || "",
+        };
+        insertQuery += `, notes`;
+        insertValues.push(JSON.stringify(notesData));
+        placeholders += ", ?";
+      }
+    } catch (error) {
+      console.log("notes column may not exist, skipping...");
+    }
+
+    insertQuery += `) VALUES (${placeholders})`;
+
+    const [result] = await db.query(insertQuery, insertValues);
 
     //  Respond to frontend
     res.status(201).json({
@@ -130,10 +215,14 @@ export const createBooking = async (req, res) => {
         room_number: roomNumber,
         check_in: formattedCheckIn,
         check_out: formattedCheckOut,
-        adults,
-        children,
+        adults: adultsCount,
+        children: childrenCount,
         total_price: totalPrice,
-        payment_status: isPaid ? "paid" : "unpaid",
+        base_price: basePrice || totalPrice,
+        discount_amount: discountAmount || 0,
+        discount_type: discountType || "None",
+        id_image_url: idImageUrl,
+        payment_status: isPaid === "true" || isPaid === true ? "paid" : "unpaid",
       },
     });
 

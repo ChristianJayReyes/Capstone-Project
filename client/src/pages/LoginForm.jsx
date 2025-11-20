@@ -537,7 +537,7 @@ const LoginForm = () => {
 
                 <div>
                   <ReCAPTCHA
-                    sitekey="6LcMAQUsAAAAACl5v2ZO4Y-WZuzWLQ6XzeRa0TVJ"
+                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LcMAQUsAAAAACl5v2ZO4Y-WZuzWLQ6XzeRa0TVJ"}
                     onChange={(token) => setCaptchaToken(token)}
                   />
                 </div>

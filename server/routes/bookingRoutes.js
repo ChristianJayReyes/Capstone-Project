@@ -10,11 +10,12 @@ import {
   exportBookingLogs   
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import upload from "../middleware/uploadMiddleware.js";
 
 const bookingRouter = express.Router();
 
 bookingRouter.post('/check-availability', checkAvailabilityAPI);
-bookingRouter.post('/book', protect, createBooking);
+bookingRouter.post('/book', protect, upload.single('idImage'), createBooking);
 bookingRouter.get('/user', protect, getUserBookings);
 bookingRouter.get('/hotel', protect, getHotelBookings);
 

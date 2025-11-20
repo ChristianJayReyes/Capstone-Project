@@ -24,7 +24,7 @@ const HotelCard = ({ room, index }) => {
         {/* Tag */}
         {index % 2 === 0 && (
           <p className="px-3 py-1 absolute top-3 left-3 text-xs bg-white/90 text-gray-900 font-semibold rounded-full shadow-md tracking-wide">
-            🌟 Best Seller
+            🌟 Popular
           </p>
         )}
       </div>

@@ -53,7 +53,7 @@ const RoomDetails = () => {
       if (!room) return;
 
       try {
-        const typeName = room?.roomType || room?.hotel?.name || "";
+        const typeName = room?.hotel?.name || room?.roomType || "";
         if (!typeName) {
           setRoomNumbers([]);
           setSelectedRoomNumber("");

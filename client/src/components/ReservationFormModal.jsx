@@ -30,6 +30,7 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
         roomName: data.roomName || "",
         roomNumber: data.roomNumber || "",
         roomRate: data.roomRate || 0,
+        roomNumbers: data.roomNumbers || [],
         deposit: data.deposit || 0,
         payment: data.payment || "Cash",
         signature: data.signature || "",
@@ -116,6 +117,7 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
                     onChange={(e) => handleChange("name", e.target.value)}
                     placeholder="Guest Full Name"
                     className="w-full rounded-lg border px-3 py-2"
+                    required
                   />
                   <input
                     id="email"
@@ -130,6 +132,7 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
                     onChange={(e) => handleChange("phone", e.target.value)}
                     placeholder="Contact Number"
                     className="w-full rounded-lg border px-3 py-2"
+                    required
                   />
                   <input
                     id="address"
@@ -207,19 +210,18 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
                     className="rounded-lg border px-3 py-2 bg-gray-50"
                   />
                   <input
-                    id="roomNumber"
-                    value={formData.roomNumber}
-                    placeholder="Room Number"
-                    readOnly
-                    className="rounded-lg border px-3 py-2 bg-gray-50"
-                  />
-                  <input
                     value={formData.roomRate}
                     onChange={(e) => handleChange("roomRate", e.target.value)}
                     placeholder="Room Rate"
                     className="rounded-lg border px-3 py-2"
                     type="number"
                   />
+                  {formData.roomNumbers && formData.roomNumbers.length > 0 && (
+                    <div className="rounded-lg border px-3 py-2 bg-gray-50 text-sm text-gray-700">
+                      <span className="font-medium mr-2">Selected Rooms:</span>
+                      {formData.roomNumbers.join(", ")}
+                    </div>
+                  )}
                 </div>
               </section>
 

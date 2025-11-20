@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
@@ -30,7 +30,7 @@ const RoomDetails = () => {
 
   // Room Number (static - for display only)
   const [roomNumbers, setRoomNumbers] = useState([]);
-  const [selectedRoomNumber, setSelectedRoomNumber] = useState(""); // Will be auto-assigned
+  const [selectedRooms, setSelectedRooms] = useState([]);
 
   // Context
   const { axios, token, user, setBookings } = useAppContext();
@@ -47,81 +47,71 @@ const RoomDetails = () => {
     },
   ]);
 
-  // Load Room Numbers from API (only count rooms that are available today)
-  useEffect(() => {
-    const fetchAvailableRooms = async () => {
-      if (!room) return;
+  const fetchAvailableRooms = useCallback(async () => {
+    if (!room) return;
 
-      try {
-        const typeName = room?.hotel?.name || room?.roomType || "";
-        if (!typeName) {
-          setRoomNumbers([]);
-          setSelectedRoomNumber("");
-          return;
-        }
+    try {
+      const typeName = room?.hotel?.name || room?.roomType || "";
+      if (!typeName) {
+        setRoomNumbers([]);
+        setSelectedRooms([]);
+        return;
+      }
 
-        const response = await fetch(
-          `https://rrh-backend.vercel.app/api/rooms/available?typeName=${encodeURIComponent(
-            typeName
-          )}`
-        );
-        const data = await response.json();
+      const response = await fetch(
+        `https://rrh-backend.vercel.app/api/rooms/available?typeName=${encodeURIComponent(
+          typeName
+        )}`
+      );
+      const data = await response.json();
 
-        if (data.success && data.roomNumbers) {
-          // Extract room numbers
-          const filteredRoomNumbers = data.roomNumbers
-            .filter((num) => num) // Remove any null/undefined
-            .sort((a, b) => {
-              // Sort room numbers naturally (101, 102, 201, etc.)
-              const numA = parseInt(a, 10);
-              const numB = parseInt(b, 10);
-              if (isNaN(numA) || isNaN(numB)) {
-                return (a || "").localeCompare(b || "");
-              }
-              return numA - numB;
-            });
-
-          setRoomNumbers(filteredRoomNumbers);
-          
-          // Auto-select first available room number
-          if (filteredRoomNumbers.length > 0) {
-            setSelectedRoomNumber(filteredRoomNumbers[0]);
-          } else {
-            setSelectedRoomNumber("");
-          }
-        } else {
-          // Fallback to dummy data if API fails
-          const hotel = hotelDummyData.find(
-            (hotelItem) => hotelItem.name === room.hotel.name
-          );
-          if (hotel && hotel.roomNumbers) {
-            setRoomNumbers(hotel.roomNumbers);
-            if (hotel.roomNumbers.length > 0) {
-              setSelectedRoomNumber(hotel.roomNumbers[0]);
+      if (data.success && data.roomNumbers) {
+        const filteredRoomNumbers = data.roomNumbers
+          .filter((num) => num)
+          .sort((a, b) => {
+            const numA = parseInt(a, 10);
+            const numB = parseInt(b, 10);
+            if (isNaN(numA) || isNaN(numB)) {
+              return (a || "").localeCompare(b || "");
             }
-          } else {
-            setRoomNumbers([]);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching available rooms:", error);
-        // Fallback to dummy data on error
+            return numA - numB;
+          });
+
+        setRoomNumbers(filteredRoomNumbers);
+        setSelectedRooms((prev) => {
+          const next = prev.filter((num) => filteredRoomNumbers.includes(num));
+          return next.length > 0 ? next : [];
+        });
+      } else {
         const hotel = hotelDummyData.find(
           (hotelItem) => hotelItem.name === room.hotel.name
         );
         if (hotel && hotel.roomNumbers) {
           setRoomNumbers(hotel.roomNumbers);
-          if (hotel.roomNumbers.length > 0) {
-            setSelectedRoomNumber(hotel.roomNumbers[0]);
-          }
+          setSelectedRooms([]);
         } else {
           setRoomNumbers([]);
+          setSelectedRooms([]);
         }
       }
-    };
-
-    fetchAvailableRooms();
+    } catch (error) {
+      console.error("Error fetching available rooms:", error);
+      const hotel = hotelDummyData.find(
+        (hotelItem) => hotelItem.name === room.hotel.name
+      );
+      if (hotel && hotel.roomNumbers) {
+        setRoomNumbers(hotel.roomNumbers);
+        setSelectedRooms([]);
+      } else {
+        setRoomNumbers([]);
+        setSelectedRooms([]);
+      }
+    }
   }, [room]);
+
+  useEffect(() => {
+    fetchAvailableRooms();
+  }, [fetchAvailableRooms]);
 
   // Load Room Details
   useEffect(() => {
@@ -136,20 +126,22 @@ const RoomDetails = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedRoomNumber) {
-      alert("No rooms are available for this room type today.");
+    if (selectedRooms.length === 0) {
+      alert("Please select at least one available room.");
       return;
     }
 
     try {
-      const response = await fetch(
-        `https://rrh-backend.vercel.app/api/rooms/check/${selectedRoomNumber}`
-      );
-      const data = await response.json();
+      for (const roomNumber of selectedRooms) {
+        const response = await fetch(
+          `https://rrh-backend.vercel.app/api/rooms/check/${roomNumber}`
+        );
+        const data = await response.json();
 
-      if (!data.success) {
-        alert(data.message);
-        return;
+        if (!data.success) {
+          alert(data.message);
+          return;
+        }
       }
 
       setIsOpen(true);
@@ -201,7 +193,8 @@ const RoomDetails = () => {
 
       // Room Information — auto-fill as requested
       roomName: room?.hotel?.name || "",
-      roomNumber: selectedRoomNumber,
+      roomNumber: selectedRooms[0] || "",
+      roomNumbers: selectedRooms,
       roomRate: room?.pricePerNight || 0,
       // Deposit & Payment — included for display; if inputs are filled they'll be included
       deposit: document.getElementById("deposit")?.value || 0,
@@ -230,22 +223,35 @@ const RoomDetails = () => {
         Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
       );
 
-      // Calculate base price
-      let basePrice = Number(formData.roomRate) * nights;
-      
-      const totalPrice = basePrice;
+      const roomCount =
+        Array.isArray(formData.roomNumbers) && formData.roomNumbers.length > 0
+          ? formData.roomNumbers.length
+          : 1;
+
+      const pricePerRoom = Number(formData.roomRate) * nights;
+      const totalPrice = pricePerRoom * roomCount;
 
       // Create FormData for file upload
       const formDataToSend = new FormData();
       formDataToSend.append("email", formData.email);
       formDataToSend.append("roomId", room?._id);
-      formDataToSend.append("roomNumber", formData.roomNumber || ""); // Can be empty, assigned by admin
+      const roomNumbersPayload =
+        Array.isArray(formData.roomNumbers) && formData.roomNumbers.length > 0
+          ? formData.roomNumbers
+          : formData.roomNumber
+          ? [formData.roomNumber]
+          : [];
+
+      formDataToSend.append("roomNumbers", JSON.stringify(roomNumbersPayload));
+      formDataToSend.append("roomNumber", roomNumbersPayload[0] || "");
       formDataToSend.append("checkInDate", formData.checkIn);
       formDataToSend.append("checkOutDate", formData.checkOut);
       formDataToSend.append("adults", formData.adults);
       formDataToSend.append("children", formData.children);
-      formDataToSend.append("totalPrice", totalPrice);
-      formDataToSend.append("basePrice", basePrice);
+      formDataToSend.append("totalPrice", pricePerRoom);
+      formDataToSend.append("basePrice", pricePerRoom);
+      formDataToSend.append("bookingTotalPrice", totalPrice);
+      formDataToSend.append("roomCount", roomCount);
       formDataToSend.append("discountAmount", 0);
       formDataToSend.append("isPaid", "false");
       formDataToSend.append("guestName", formData.name);
@@ -269,8 +275,11 @@ const RoomDetails = () => {
 
       if (data.success) {
         toast.success("Booking confirmed! Check your email for confirmation.");
-        setBookings((prev) => [data.booking, ...prev]);
+        const newBookings = data.bookings || (data.booking ? [data.booking] : []);
+        setBookings((prev) => [...newBookings, ...prev]);
         setShowForm(false);
+        setSelectedRooms([]);
+        fetchAvailableRooms();
       } else {
         toast.error(data.message || "Booking failed");
       }
@@ -396,6 +405,53 @@ const RoomDetails = () => {
                   ? "Room will be assigned by admin"
                   : "No rooms available today"}
               </p>
+              <div className="mt-4 space-y-2">
+                {roomNumbers.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {roomNumbers.map((num) => {
+                      const isChecked = selectedRooms.includes(num);
+                      return (
+                        <label
+                          key={num}
+                          className={`flex items-center justify-between border rounded-lg px-3 py-2 text-sm cursor-pointer transition ${
+                            isChecked
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-gray-200"
+                          }`}
+                        >
+                          <span>Room {num}</span>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRooms((prev) => [
+                                  ...prev,
+                                  num,
+                                ]);
+                              } else {
+                                setSelectedRooms((prev) =>
+                                  prev.filter((room) => room !== num)
+                                );
+                              }
+                            }}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No rooms available today
+                  </p>
+                )}
+                <p className="text-xs text-gray-600">
+                  Selected:{" "}
+                  {selectedRooms.length > 0
+                    ? selectedRooms.join(", ")
+                    : "None"}
+                </p>
+              </div>
             </div>
           </div>
 

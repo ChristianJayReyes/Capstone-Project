@@ -57,13 +57,15 @@ export const createBooking = async (req, res) => {
     // Note: FormData fields come as strings, need to parse numbers
     const email = req.body.email;
     const roomId = req.body.roomId;
-    const roomNumber = req.body.roomNumber || null; // Can be null, will be assigned by admin
+    const roomNumber = req.body.roomNumber || null; // legacy single room number
     const checkInDate = req.body.checkInDate;
     const checkOutDate = req.body.checkOutDate;
     const adults = parseInt(req.body.adults) || 1;
     const children = parseInt(req.body.children) || 0;
-    const totalPrice = parseFloat(req.body.totalPrice) || 0;
+    const totalPrice = parseFloat(req.body.totalPrice) || 0; // price per room
     const basePrice = parseFloat(req.body.basePrice) || totalPrice;
+    const bookingTotalPrice = parseFloat(req.body.bookingTotalPrice) || totalPrice;
+    const roomCount = parseInt(req.body.roomCount) || 1;
     const discountAmount = parseFloat(req.body.discountAmount) || 0;
     const isPaid = req.body.isPaid === "true" || req.body.isPaid === true;
     const discountType = req.body.discountType || "None";
@@ -81,6 +83,25 @@ export const createBooking = async (req, res) => {
     console.log("📥 Received booking data:", req.body);
 
     const db = await connectDB();
+
+    // Parse room numbers array (if provided)
+    let roomNumbers = [];
+    if (req.body.roomNumbers) {
+      try {
+        const parsed = JSON.parse(req.body.roomNumbers);
+        if (Array.isArray(parsed)) {
+          roomNumbers = parsed.filter((num) => typeof num === "string" && num.trim() !== "");
+        }
+      } catch (error) {
+        // if parsing fails, ignore
+      }
+    }
+    if (roomNumbers.length === 0 && roomNumber) {
+      roomNumbers = [roomNumber];
+    }
+    if (roomNumbers.length === 0) {
+      roomNumbers = [null]; // allow admin to assign later
+    }
 
     // Upload ID image to Cloudinary if provided
     let idImageUrl = null;
@@ -110,7 +131,9 @@ export const createBooking = async (req, res) => {
     //  Check if the room type is already booked within the selected range
     // Note: Room number can be null (will be assigned by admin)
     // We check availability by room_type_id instead
-    if (roomNumber) {
+    // Helper to check if a specific room number is already booked
+    const ensureRoomAvailable = async (targetRoomNumber) => {
+      if (!targetRoomNumber) return;
       const [existingBookings] = await db.query(
         `SELECT * FROM bookings
          WHERE room_number = ?
@@ -120,7 +143,7 @@ export const createBooking = async (req, res) => {
            (? <= check_in AND ? >= check_out)
          )`,
         [
-          roomNumber,
+          targetRoomNumber,
           formattedCheckIn,
           formattedCheckIn,
           formattedCheckOut,
@@ -131,56 +154,79 @@ export const createBooking = async (req, res) => {
       );
 
       if (existingBookings.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: "❌ This room is already booked for the selected dates.",
-        });
+        throw new Error(`❌ Room ${targetRoomNumber} is already booked for the selected dates.`);
       }
+    };
+
+    for (const currentRoom of roomNumbers) {
+      await ensureRoomAvailable(currentRoom);
     }
 
-    // Build dynamic INSERT query based on available columns
-    // Base columns that always exist
-    let insertQuery = `INSERT INTO bookings 
-      (user_id, room_type_id, room_number, check_in, check_out, adults, children, total_price, payment_status, status`;
-    let insertValues = [
-      req.user.user_id || null,
-      roomId,
-      roomNumber || null, // Can be NULL, assigned by admin later
-      formattedCheckIn,
-      formattedCheckOut,
-      adultsCount,
-      childrenCount,
-      totalPrice,
-      isPaid === "true" || isPaid === true ? "paid" : "unpaid",
-      "Pending",
-    ];
-    let placeholders = Array(10).fill("?").join(", ");
-
-    // Check and add optional columns if they exist
-    const optionalColumns = [
-      { name: 'id_image_url', value: idImageUrl },
-      { name: 'discount_type', value: discountType || "None" },
-      { name: 'base_price', value: basePrice || totalPrice },
-      { name: 'discount_amount', value: discountAmount || 0 },
-    ];
-
-    for (const col of optionalColumns) {
+    // Cache column existence checks
+    const columnCache = {};
+    const columnExists = async (columnName) => {
+      if (columnCache[columnName] !== undefined) {
+        return columnCache[columnName];
+      }
       try {
-        const [columns] = await db.query(`SHOW COLUMNS FROM bookings LIKE '${col.name}'`);
-        if (columns.length > 0) {
-          insertQuery += `, ${col.name}`;
-          insertValues.push(col.value);
-          placeholders += ", ?";
-        }
+        const [columns] = await db.query(
+          "SHOW COLUMNS FROM bookings LIKE ?",
+          [columnName]
+        );
+        columnCache[columnName] = columns.length > 0;
+        return columnCache[columnName];
       } catch (error) {
-        console.log(`${col.name} column may not exist, skipping...`);
+        columnCache[columnName] = false;
+        return false;
       }
-    }
+    };
 
-    // Add notes field if we have additional info to store
-    try {
-      const [notesCol] = await db.query("SHOW COLUMNS FROM bookings LIKE 'notes'");
-      if (notesCol.length > 0) {
+    const hasIdImage = await columnExists("id_image_url");
+    const hasDiscountType = await columnExists("discount_type");
+    const hasBasePrice = await columnExists("base_price");
+    const hasDiscountAmount = await columnExists("discount_amount");
+    const hasNotes = await columnExists("notes");
+
+    const bookingsCreated = [];
+
+    for (const currentRoomNumber of roomNumbers) {
+      let insertQuery = `INSERT INTO bookings 
+        (user_id, room_type_id, room_number, check_in, check_out, adults, children, total_price, payment_status, status`;
+      let insertValues = [
+        req.user.user_id || null,
+        roomId,
+        currentRoomNumber || null,
+        formattedCheckIn,
+        formattedCheckOut,
+        adultsCount,
+        childrenCount,
+        totalPrice,
+        isPaid === "true" || isPaid === true ? "paid" : "unpaid",
+        "Pending",
+      ];
+      let placeholders = Array(10).fill("?").join(", ");
+
+      if (hasIdImage) {
+        insertQuery += ", id_image_url";
+        insertValues.push(idImageUrl);
+        placeholders += ", ?";
+      }
+      if (hasDiscountType) {
+        insertQuery += ", discount_type";
+        insertValues.push(discountType || "None");
+        placeholders += ", ?";
+      }
+      if (hasBasePrice) {
+        insertQuery += ", base_price";
+        insertValues.push(basePrice || totalPrice);
+        placeholders += ", ?";
+      }
+      if (hasDiscountAmount) {
+        insertQuery += ", discount_amount";
+        insertValues.push(discountAmount || 0);
+        placeholders += ", ?";
+      }
+      if (hasNotes) {
         const notesData = {
           guestName: guestName || "",
           phoneNumber: phoneNumber || "",
@@ -191,39 +237,26 @@ export const createBooking = async (req, res) => {
           signature: signature || "",
           remarks: remarks || "",
         };
-        insertQuery += `, notes`;
+        insertQuery += ", notes";
         insertValues.push(JSON.stringify(notesData));
         placeholders += ", ?";
       }
-    } catch (error) {
-      console.log("notes column may not exist, skipping...");
+
+      insertQuery += `) VALUES (${placeholders})`;
+      const [result] = await db.query(insertQuery, insertValues);
+
+      bookingsCreated.push({
+        booking_id: result.insertId,
+        room_number: currentRoomNumber,
+      });
     }
-
-    insertQuery += `) VALUES (${placeholders})`;
-
-    const [result] = await db.query(insertQuery, insertValues);
 
     //  Respond to frontend
     res.status(201).json({
       success: true,
-      message: "✅ Booking created successfully!",
-      booking: {
-        booking_id: result.insertId,
-        user_id: req.user.user_id || null,
-        user_email: req.user.email,
-        room_type_id: roomId,
-        room_number: roomNumber,
-        check_in: formattedCheckIn,
-        check_out: formattedCheckOut,
-        adults: adultsCount,
-        children: childrenCount,
-        total_price: totalPrice,
-        base_price: basePrice || totalPrice,
-        discount_amount: discountAmount || 0,
-        discount_type: discountType || "None",
-        id_image_url: idImageUrl,
-        payment_status: isPaid === "true" || isPaid === true ? "paid" : "unpaid",
-      },
+      message: `✅ Booking created successfully for ${bookingsCreated.length} room(s)!`,
+      booking: bookingsCreated[0],
+      bookings: bookingsCreated,
     });
 
     // Send email to the user
@@ -237,18 +270,20 @@ export const createBooking = async (req, res) => {
     );
 
     const roomName = roomRows[0]?.roomName || "Unknown Room";
+    const primaryBooking = bookingsCreated[0];
 
     const reservationDetails = {
-      bookingId: result.insertId,
+      bookingId: primaryBooking?.booking_id,
       checkInDate: formattedCheckIn,
       checkOutDate: formattedCheckOut,
       roomId,
       roomName, 
-      totalPrice,
+      totalPrice: bookingTotalPrice,
       guests: {
         adults,
         children,
       },
+      roomsBooked: bookingsCreated.map((booking) => booking.room_number).filter(Boolean),
     };
 
     await sendReservationEmail(email, reservationDetails);

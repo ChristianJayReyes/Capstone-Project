@@ -21,7 +21,6 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
         address: data.address || "",
         nationality: data.nationality || "",
         company: data.company || "",
-        discount: data.discount || "None",
         checkIn: data.checkIn || "",
         checkOut: data.checkOut || "",
         adults: data.adults || "1",
@@ -31,8 +30,6 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
         roomName: data.roomName || "",
         roomNumber: data.roomNumber || "",
         roomRate: data.roomRate || 0,
-        idImage: data.idImage || null,
-        idImageFile: data.idImageFile || null,
         deposit: data.deposit || 0,
         payment: data.payment || "Cash",
         signature: data.signature || "",
@@ -59,12 +56,6 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
       alert(
         "Please ensure Email, Check-in and Check-out are filled."
       );
-      return;
-    }
-
-    // Validate discount and ID image
-    if (formData.discount && formData.discount !== "None" && !formData.idImage) {
-      alert("Please upload your ID image to avail the discount.");
       return;
     }
 
@@ -199,13 +190,6 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
                     type="number"
                   />
 
-                  <input
-                    value={formData.discount}
-                    onChange={(e) => handleChange("discount", e.target.value)}
-                    id="discountType"
-                    placeholder="Type of Discount"
-                    className="rounded-lg border px-3 py-2 col-span-2"
-                  />
                 </div>
               </section>
 
@@ -239,73 +223,6 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
                 </div>
               </section>
 
-              {/* Discount & ID Image */}
-              {(formData.discount && formData.discount !== "None") && (
-                <section>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                    Discount Information
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm text-gray-600 mb-1">Discount Type:</p>
-                      <p className="font-semibold text-blue-700">{formData.discount}</p>
-                      <p className="text-xs text-gray-500 mt-1">20% discount will be applied</p>
-                    </div>
-                    {formData.idImage && (
-                      <div>
-                        <p className="text-sm text-gray-600 mb-2">Uploaded ID:</p>
-                        <img 
-                          src={formData.idImage} 
-                          alt="ID" 
-                          className="w-full max-w-md h-48 object-contain border rounded-lg bg-gray-50"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {/* Financial & Other */}
-              <section>
-                <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                  Payment & Other
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    id="deposit"
-                    value={formData.deposit}
-                    onChange={(e) => handleChange("deposit", e.target.value)}
-                    placeholder="Deposit"
-                    className="rounded-lg border px-3 py-2"
-                    type="number"
-                  />
-                  <select
-                    id="paymentMode"
-                    value={formData.payment}
-                    onChange={(e) => handleChange("payment", e.target.value)}
-                    className="rounded-lg border px-3 py-2"
-                  >
-                    <option>Cash</option>
-                    <option>Card</option>
-                    <option>Bank Transfer</option>
-                    <option>GCash</option>
-                  </select>
-
-                  <input
-                    value={formData.signature}
-                    onChange={(e) => handleChange("signature", e.target.value)}
-                    placeholder="Signature (type name)"
-                    className="rounded-lg border px-3 py-2 col-span-2"
-                  />
-                  <textarea
-                    value={formData.remarks}
-                    onChange={(e) => handleChange("remarks", e.target.value)}
-                    placeholder="Remarks / Special instructions"
-                    className="rounded-lg border px-3 py-2 col-span-2"
-                    rows={3}
-                  />
-                </div>
-              </section>
 
               {/* Actions */}
               <div className="flex justify-end gap-3 mt-4">

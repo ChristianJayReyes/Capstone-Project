@@ -454,3 +454,46 @@ export const adminDeleteRoom = async (req, res) => {
     }
   }
 };
+
+// Public: Get available rooms (count + numbers) for a specific room type
+export const getAvailableRoomsByType = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { typeName } = req.query;
+
+    if (!typeName || !typeName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "typeName query parameter is required",
+      });
+    }
+
+    const [rows] = await db.query(
+      `SELECT 
+        r.room_id,
+        r.room_number,
+        r.status,
+        rt.room_type_id,
+        rt.type_name
+      FROM rooms r
+      JOIN room_types rt ON rt.room_type_id = r.room_type_id
+      WHERE rt.type_name = ? AND r.status = 'available'
+      ORDER BY r.room_number`,
+      [typeName.trim()]
+    );
+
+    res.json({
+      success: true,
+      count: rows.length,
+      rooms: rows,
+      roomNumbers: rows.map((room) => room.room_number),
+    });
+  } catch (error) {
+    console.error("Failed to fetch available rooms by type:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch available rooms",
+      error: error.message,
+    });
+  }
+};

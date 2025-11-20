@@ -32,13 +32,6 @@ const RoomDetails = () => {
   const [roomNumbers, setRoomNumbers] = useState([]);
   const [selectedRoomNumber, setSelectedRoomNumber] = useState(""); // Will be auto-assigned
 
-  // Discount
-  const [selectedDiscount, setSelectedDiscount] = useState("None");
-  
-  // ID Image Upload
-  const [idImage, setIdImage] = useState(null);
-  const [idImagePreview, setIdImagePreview] = useState(null);
-
   // Context
   const { axios, token, user, setBookings } = useAppContext();
 
@@ -54,49 +47,37 @@ const RoomDetails = () => {
     },
   ]);
 
-  // Load Room Numbers from API (filter out Booked and Maintenance)
+  // Load Room Numbers from API (only count rooms that are available today)
   useEffect(() => {
     const fetchAvailableRooms = async () => {
       if (!room) return;
 
       try {
-        // Fetch all rooms and filter by status and room type
+        const typeName = room?.roomType || room?.hotel?.name || "";
+        if (!typeName) {
+          setRoomNumbers([]);
+          setSelectedRoomNumber("");
+          return;
+        }
+
         const response = await fetch(
-          `https://rrh-backend.vercel.app/api/rooms/getRooms.php`
+          `https://rrh-backend.vercel.app/api/rooms/available?typeName=${encodeURIComponent(
+            typeName
+          )}`
         );
         const data = await response.json();
 
-        if (data.success && data.data) {
-          // Get the room type name from the current room
-          const roomTypeName = room?.hotel?.name || room?.roomType || "";
-          
-          // Filter rooms: exclude Booked and Maintenance, match room type
-          const availableRooms = data.data.filter((r) => {
-            const status = (r.status || "").toLowerCase();
-            // Exclude Booked and Maintenance rooms
-            if (status === "booked" || status === "maintenance") {
-              return false;
-            }
-            // Only show Available rooms
-            if (status !== "available") {
-              return false;
-            }
-            // Match room type if we have a room type name
-            if (roomTypeName && r.type_name) {
-              return r.type_name === roomTypeName;
-            }
-            // If no room type match needed, show all available
-            return true;
-          });
-
+        if (data.success && data.roomNumbers) {
           // Extract room numbers
-          const filteredRoomNumbers = availableRooms
-            .map((r) => r.room_number)
+          const filteredRoomNumbers = data.roomNumbers
             .filter((num) => num) // Remove any null/undefined
             .sort((a, b) => {
               // Sort room numbers naturally (101, 102, 201, etc.)
-              const numA = parseInt(a) || 0;
-              const numB = parseInt(b) || 0;
+              const numA = parseInt(a, 10);
+              const numB = parseInt(b, 10);
+              if (isNaN(numA) || isNaN(numB)) {
+                return (a || "").localeCompare(b || "");
+              }
               return numA - numB;
             });
 
@@ -142,27 +123,6 @@ const RoomDetails = () => {
     fetchAvailableRooms();
   }, [room]);
 
-  // Handle ID Image Upload
-  const handleIdImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        alert("Image size should be less than 5MB");
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        alert("Please upload an image file");
-        return;
-      }
-      setIdImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setIdImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   // Load Room Details
   useEffect(() => {
     const roomData = roomsDummyData.find((r) => r._id === id);
@@ -175,10 +135,9 @@ const RoomDetails = () => {
   // Handle Check Availability (opens date modal)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate discount and ID image
-    if (selectedDiscount !== "None" && !idImage) {
-      alert("Please upload your ID image to avail the discount.");
+
+    if (!selectedRoomNumber) {
+      alert("No rooms are available for this room type today.");
       return;
     }
 
@@ -231,9 +190,6 @@ const RoomDetails = () => {
       // Company 
       company: "",
 
-      // Discount
-      discount: selectedDiscount,
-
       // Stay Information
       checkIn: formattedCheckIn,
       checkOut: formattedCheckOut,
@@ -247,9 +203,6 @@ const RoomDetails = () => {
       roomName: room?.hotel?.name || "",
       roomNumber: selectedRoomNumber,
       roomRate: room?.pricePerNight || 0,
-      idImage: idImagePreview, // Base64 preview for display
-      idImageFile: idImage, // Actual file for upload
-
       // Deposit & Payment — included for display; if inputs are filled they'll be included
       deposit: document.getElementById("deposit")?.value || 0,
       payment: document.getElementById("paymentMode")?.value || "Cash",
@@ -280,13 +233,7 @@ const RoomDetails = () => {
       // Calculate base price
       let basePrice = Number(formData.roomRate) * nights;
       
-      // Apply 20% discount if PWD or Senior Citizen
-      let discountAmount = 0;
-      if (formData.discount === "PWD" || formData.discount === "Senior Citizen") {
-        discountAmount = basePrice * 0.2;
-      }
-      
-      const totalPrice = basePrice - discountAmount;
+      const totalPrice = basePrice;
 
       // Create FormData for file upload
       const formDataToSend = new FormData();
@@ -299,13 +246,13 @@ const RoomDetails = () => {
       formDataToSend.append("children", formData.children);
       formDataToSend.append("totalPrice", totalPrice);
       formDataToSend.append("basePrice", basePrice);
-      formDataToSend.append("discountAmount", discountAmount);
+      formDataToSend.append("discountAmount", 0);
       formDataToSend.append("isPaid", "false");
       formDataToSend.append("guestName", formData.name);
       formDataToSend.append("phoneNumber", formData.phone || "");
       formDataToSend.append("address", formData.address || "");
       formDataToSend.append("nationality", formData.nationality || "");
-      formDataToSend.append("discountType", formData.discount || "None");
+      formDataToSend.append("discountType", "None");
       formDataToSend.append("roomName", formData.roomName);
       formDataToSend.append("roomRate", formData.roomRate);
       formDataToSend.append("deposit", formData.deposit || 0);
@@ -313,11 +260,6 @@ const RoomDetails = () => {
       formDataToSend.append("signature", formData.signature || "");
       formDataToSend.append("remarks", formData.remarks || "");
       
-      // Append ID image if exists
-      if (formData.idImageFile) {
-        formDataToSend.append("idImage", formData.idImageFile);
-      }
-
       const { data } = await axios.post("/api/bookings/book", formDataToSend, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -329,10 +271,6 @@ const RoomDetails = () => {
         toast.success("Booking confirmed! Check your email for confirmation.");
         setBookings((prev) => [data.booking, ...prev]);
         setShowForm(false);
-        // Reset form
-        setIdImage(null);
-        setIdImagePreview(null);
-        setSelectedDiscount("None");
       } else {
         toast.error(data.message || "Booking failed");
       }
@@ -448,64 +386,17 @@ const RoomDetails = () => {
             {/* Room Number (Static Display) */}
             <div className="flex flex-col">
               <label className="font-medium">
-                Available Rooms
+                Available Rooms Today
               </label>
-              <div className="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm">
-                {roomNumbers.length > 0 
-                  ? roomNumbers.join(", ") 
-                  : "No rooms available"}
+              <div className="px-6 py-3 rounded-lg bg-gray-100 text-gray-800 text-2xl font-semibold text-center min-w-[90px]">
+                {roomNumbers.length}
               </div>
-              <p className="text-xs text-gray-500 mt-1">Room will be assigned by admin</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {roomNumbers.length > 0
+                  ? "Room will be assigned by admin"
+                  : "No rooms available today"}
+              </p>
             </div>
-
-            {/* Divider */}
-            <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
-
-            {/* Discount Selection */}
-            <div className="flex flex-col">
-              <label htmlFor="discount" className="font-medium">
-                Discount
-              </label>
-              <select
-                id="discount"
-                value={selectedDiscount}
-                onChange={(e) => setSelectedDiscount(e.target.value)}
-                className="px-4 py-2 rounded-lg bg-white/80 text-gray-800 outline-none focus:ring-2 focus:ring-[#007BFF] border border-gray-300"
-              >
-                <option value="None">None</option>
-                <option value="PWD">PWD (20% off)</option>
-                <option value="Senior Citizen">Senior Citizen (20% off)</option>
-              </select>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
-
-            {/* ID Image Upload */}
-            {selectedDiscount !== "None" && (
-              <div className="flex flex-col">
-                <label htmlFor="idImage" className="font-medium">
-                  Upload ID {selectedDiscount === "PWD" ? "(PWD ID)" : "(Senior Citizen ID)"}
-                </label>
-                <input
-                  id="idImage"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleIdImageChange}
-                  className="px-4 py-2 rounded-lg bg-white/80 text-gray-800 outline-none focus:ring-2 focus:ring-[#007BFF] text-sm"
-                  required={selectedDiscount !== "None"}
-                />
-                {idImagePreview && (
-                  <div className="mt-2">
-                    <img 
-                      src={idImagePreview} 
-                      alt="ID Preview" 
-                      className="w-20 h-20 object-cover rounded border"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           <button

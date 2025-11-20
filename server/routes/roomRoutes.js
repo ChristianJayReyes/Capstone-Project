@@ -8,13 +8,15 @@ import { createRoom,
   adminGetRooms,
   adminAddRoom,
   adminUpdateRoom,
-  adminDeleteRoom
+  adminDeleteRoom,
+  getAvailableRoomsByType
 } from "../controllers/roomController.js";
 
 const roomRouter = express.Router();
 roomRouter.route("/").post(protect, upload.array("images",4), createRoom).get(getRooms);
 roomRouter.route("/owner").get(protect, getOwnerRooms);
 roomRouter.get("/check/:room_number", checkRoomAvailability);
+roomRouter.get("/available", getAvailableRoomsByType);
 
 // =================== ADMIN ROUTES ===================
 roomRouter.get("/admin/getRooms", adminGetRooms);

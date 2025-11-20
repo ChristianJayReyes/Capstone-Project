@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { assets, roomsDummyData } from "../assets/assets";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import background from "../assets/background.jpg";
 
 const Hero = () => {
   const [selectedRoom, setSelectedRoom] = useState("");
@@ -30,7 +29,7 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          src={background}
+          src="/src/assets/background.jpg"
           alt="Resort"
           className="w-full h-full object-cover brightness-[0.55]"
         />

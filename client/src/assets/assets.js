@@ -115,7 +115,6 @@ import htm2 from "./htm2.jpg";
 import htm3 from "./htm3.jpg";
 import addroomsIcon from "./addroomsIcon.svg";
 import bookinglogsIcon from "./bookinglogsIcon.svg";
-import background from "./background.jpg";
 
 
 

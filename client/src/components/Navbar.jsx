@@ -23,6 +23,18 @@ const Navbar = () => {
   const location = useLocation();
   const { navigate, isOwner, setShowHotelReg, user, logoutUser } = useAppContext();
 
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMenuOpen]);
+
   // Sync with AppContext user state
   useEffect(() => {
     setCurrentUser(user);
@@ -192,12 +204,97 @@ const Navbar = () => {
         <div className="flex items-center gap-3 md:hidden">
           <img
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            src={assets.menuIcon}
+            src={isMenuOpen ? assets.closeMenu : assets.menuIcon}
             alt=""
             className="h-6"
           />
         </div>
       </nav>
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-[2px] md:hidden z-40"
+            onClick={() => setIsMenuOpen(false)}
+          ></div>
+          <div className="fixed top-0 right-0 h-full w-4/5 max-w-sm bg-white md:hidden z-50 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-6 py-5 border-b">
+              <Link to="/" onClick={() => setIsMenuOpen(false)}>
+                <img src={assets.RRS} alt="logo" className="h-12 w-auto" />
+              </Link>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="p-2 rounded-full bg-gray-100"
+                aria-label="Close menu"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+              <div className="flex flex-col space-y-4 text-lg text-gray-700">
+                {navLinks.map((link, i) => (
+                  <Link
+                    key={i}
+                    to={link.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`py-2 border-b border-gray-100 ${
+                      location.pathname === link.path
+                        ? "text-indigo-600 font-semibold"
+                        : ""
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
+                ))}
+              </div>
+
+              {currentUser ? (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={
+                        currentUser.photo ||
+                        "https://static.vecteezy.com/system/resources/previews/000/550/731/original/user-icon-vector.jpg"
+                      }
+                      alt="user avatar"
+                      className="h-12 w-12 rounded-full object-cover border"
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {currentUser.full_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {currentUser.email}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full py-2 rounded-xl bg-red-500/10 text-red-600 font-medium"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setShowLogin(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full py-3 rounded-full bg-black text-white font-semibold"
+                >
+                  Login
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Login Modal */}
       {showLogin && (

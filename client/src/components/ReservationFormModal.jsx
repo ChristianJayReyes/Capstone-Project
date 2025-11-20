@@ -52,10 +52,12 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
     if (
       !formData.email ||
       !formData.checkIn ||
-      !formData.checkOut
+      !formData.checkOut ||
+      !formData.name ||
+      !formData.phone
     ) {
       alert(
-        "Please ensure Email, Check-in and Check-out are filled."
+        "Please ensure Email, Check-in, Check-out, Name and Phone are filled."
       );
       return;
     }

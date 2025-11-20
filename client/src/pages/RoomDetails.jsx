@@ -286,6 +286,7 @@ const RoomDetails = () => {
     } catch (error) {
       console.error("Booking error:", error);
       const errorMessage =
+        error.response?.data?.error ||
         error.response?.data?.message ||
         "Something went wrong while confirming the booking.";
       toast.error(errorMessage);

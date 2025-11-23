@@ -115,6 +115,7 @@ import htm2 from "./htm2.jpg";
 import htm3 from "./htm3.jpg";
 import addroomsIcon from "./addroomsIcon.svg";
 import bookinglogsIcon from "./bookinglogsIcon.svg";
+import roommatrixIcon from "./roommatrixIcon.svg";
 
 
 
@@ -237,6 +238,7 @@ export const assets = {
   htm3,
   bookinglogsIcon,
   addroomsIcon,
+  roommatrixIcon,
 };
 
 export const cities = [
@@ -381,7 +383,6 @@ export const hotelDummyData = [
   {
     _id: "18",
     name: "Deluxe Queen",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
@@ -391,7 +392,6 @@ export const hotelDummyData = [
   {
     _id: "19",
     name: "Deluxe Twin",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
@@ -401,7 +401,6 @@ export const hotelDummyData = [
   {
     _id: "15",
     name: "Dormitory Room",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
@@ -411,7 +410,6 @@ export const hotelDummyData = [
   {
     _id: "16",
     name: "Family Room",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
@@ -421,7 +419,6 @@ export const hotelDummyData = [
   {
     _id: "11",
     name: "Presidential Queen",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
@@ -431,7 +428,6 @@ export const hotelDummyData = [
   {
     _id: "12",
     name: "Presidential Twin",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
@@ -441,7 +437,6 @@ export const hotelDummyData = [
   {
     _id: "17",
     name: "Superior Queen",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",
@@ -451,7 +446,6 @@ export const hotelDummyData = [
   {
     _id: "14",
     name: "Superior Twin",
-    address: "Brgy. Quilib, Rosario, Batangas",
     owner: userDummyData,
     createdAt: "2025-04-10T06:22:11.663Z",
     updatedAt: "2025-04-10T06:22:11.663Z",

@@ -1,16 +1,5 @@
 import React, { useEffect, useState } from "react";
 
-const roomTypeMap = {
-  "Dormitory Room": 1,
-  "Superior Queen": 2,
-  "Superior Twin": 3,
-  "Deluxe Queen": 4,
-  "Deluxe Twin": 5,
-  "Presidential Queen": 6,
-  "Presidential Twin": 7,
-  "Family Room": 8,
-};
-
 export default function RoomFormModal({
   isOpen,
   onClose,
@@ -18,51 +7,71 @@ export default function RoomFormModal({
   onAdd,
   onUpdate,
   onSaveBookingNotes,
+  roomTypesList = [],
 }) {
   const [loading, setLoading] = useState(false);
-
   const isBookingView = initialData && initialData.booking !== undefined;
-
   const isEditing = Boolean(initialData && initialData.room_id);
 
   const [form, setForm] = useState({
     roomNumber: "",
-    roomType: "Dormitory Room",
-    roomTypeId: roomTypeMap["Dormitory Room"],
+    roomType: "",
+    roomTypeId: null,
     pricePerNight: "",
     capacityAdults: 1,
     capacityChildren: 0,
     status: "available",
   });
 
+  // Initialize form when editing
   useEffect(() => {
-    if (!initialData) {
-      setForm({
-        roomNumber: "",
-        roomType: "Dormitory Room",
-        roomTypeId: roomTypeMap["Dormitory Room"],
-        pricePerNight: "",
-        capacityAdults: 1,
-        capacityChildren: 0,
-        status: "available",
-      });
-    } else if (isBookingView) {
-      // booking view - keep data separate; form unused
-    } else {
+    if (initialData && !isBookingView) {
       setForm({
         roomNumber: initialData.roomNumber || "",
-        roomType: initialData.roomType || "Dormitory Room",
-        roomTypeId:
-          initialData.roomTypeId ||
-          roomTypeMap[initialData.roomType] ||
-          roomTypeMap["Dormitory Room"],
+        roomType: initialData.roomType || "",
+        roomTypeId: initialData.roomTypeId || initialData.room_type_id || null,
         pricePerNight: initialData.pricePerNight ?? "",
         capacityAdults: initialData.capacityAdults ?? 1,
         capacityChildren: initialData.capacityChildren ?? 0,
         status: initialData.status || "available",
       });
+    } else if (!initialData) {
+      // Reset form when adding new room
+      setForm({
+        roomNumber: "",
+        roomType: "",
+        roomTypeId: null,
+        pricePerNight: "",
+        capacityAdults: 1,
+        capacityChildren: 0,
+        status: "available",
+      });
     }
-  }, [initialData]);
+  }, [initialData, isBookingView]);
+
+  // Handle room type selection - auto-fill price and capacity
+  const handleRoomTypeChange = (typeName) => {
+    const selectedType = roomTypesList.find((t) => t.name === typeName);
+
+    if (selectedType) {
+      setForm((prev) => ({
+        ...prev,
+        roomType: typeName,
+        roomTypeId: selectedType.id,
+        pricePerNight: selectedType.price_per_night ?? prev.pricePerNight,
+        capacityAdults: selectedType.capacity_adults ?? prev.capacityAdults,
+        capacityChildren:
+          selectedType.capacity_children ?? prev.capacityChildren,
+      }));
+    } else {
+      // New room type being typed
+      setForm((prev) => ({
+        ...prev,
+        roomType: typeName,
+        roomTypeId: null, // Will be created on backend
+      }));
+    }
+  };
 
   const handleSubmit = async () => {
     if (isBookingView) {
@@ -75,26 +84,29 @@ export default function RoomFormModal({
       return;
     }
 
+    if (!form.roomType.trim()) {
+      alert("Please enter or select a room type");
+      return;
+    }
+
     const payload = {
       room_number: form.roomNumber.trim(),
-      room_type: form.roomType,
+      room_type_id: form.roomTypeId,
+      room_type: form.roomType.trim(),
       price_per_night: Number(form.pricePerNight) || 0,
-      capacity_adults: Number(form.capacityAdults) || 0,
+      capacity_adults: Number(form.capacityAdults) || 1,
       capacity_children: Number(form.capacityChildren) || 0,
-      status: form.status || "Available",
+      status: form.status || "available",
     };
-
-    console.log("🧾 handleSubmit payload:", payload);
 
     setLoading(true);
     try {
       let ok;
-      if (initialData && initialData.room_id) {
+      if (isEditing) {
         ok = await onUpdate(initialData.room_id, payload);
       } else {
         ok = await onAdd(payload);
       }
-
       if (ok) onClose();
     } finally {
       setLoading(false);
@@ -106,16 +118,13 @@ export default function RoomFormModal({
       onClose();
       return;
     }
-    // send notes via parent's handler
     if (onSaveBookingNotes) {
       await onSaveBookingNotes(
         initialData.booking.booking_id,
         initialData.booking.notes ?? ""
       );
-      onClose();
-    } else {
-      onClose();
     }
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -131,7 +140,7 @@ export default function RoomFormModal({
           <h3 className="text-lg font-semibold text-gray-900">
             {isBookingView
               ? "Reservation Details"
-              : initialData
+              : isEditing
               ? "Edit Room"
               : "Add New Room"}
           </h3>
@@ -189,22 +198,6 @@ export default function RoomFormModal({
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Adults</div>
-                      <div className="font-medium">
-                        {initialData.booking.adults ??
-                          initialData.booking.capacity_adults ??
-                          1}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Children</div>
-                      <div className="font-medium">
-                        {initialData.booking.children ??
-                          initialData.booking.capacity_children ??
-                          0}
-                      </div>
-                    </div>
-                    <div>
                       <div className="text-xs text-gray-500">Check-in</div>
                       <div className="font-medium">
                         {initialData.booking.check_in
@@ -225,15 +218,6 @@ export default function RoomFormModal({
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Price / night</div>
-                      <div className="font-medium">
-                        ₱
-                        {Number(
-                          initialData.booking.price_per_night ?? 0
-                        ).toLocaleString()}
-                      </div>
-                    </div>
-                    <div>
                       <div className="text-xs text-gray-500">Total price</div>
                       <div className="font-semibold">
                         ₱
@@ -248,16 +232,7 @@ export default function RoomFormModal({
                         {initialData.booking.status}
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        Payment Status
-                      </div>
-                      <div className="font-medium">
-                        {initialData.booking.payment_status || "Not Paid"}
-                      </div>
-                    </div>
                   </div>
-
                   <div>
                     <div className="text-xs text-gray-500 mb-2">Note</div>
                     <textarea
@@ -281,7 +256,7 @@ export default function RoomFormModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Room Number
+                    Room Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -289,49 +264,50 @@ export default function RoomFormModal({
                     onChange={(e) =>
                       setForm((p) => ({ ...p, roomNumber: e.target.value }))
                     }
-                    placeholder="Enter room number"
+                    placeholder="e.g., 101, A-201"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Room Type
+                    Room Type <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <input
+                    list="roomTypesList"
                     value={form.roomType}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        roomType: e.target.value,
-                        roomTypeId: roomTypeMap[e.target.value],
-                      }))
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                  >
-                    {Object.keys(roomTypeMap).map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
+                    onChange={(e) => handleRoomTypeChange(e.target.value)}
+                    placeholder="Select or type new room type"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <datalist id="roomTypesList">
+                    {roomTypesList.map((t) => (
+                      <option key={t.id} value={t.name} />
                     ))}
-                  </select>
+                  </datalist>
+                  {!form.roomTypeId && form.roomType && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      New room type will be created
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price per Night
+                    Price per Night (₱)
                   </label>
                   <input
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={form.pricePerNight}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, pricePerNight: e.target.value }))
                     }
-                    placeholder="0"
+                    placeholder="0.00"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    disabled={isEditing}
                   />
                 </div>
 
@@ -367,9 +343,8 @@ export default function RoomFormModal({
                       }))
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                    disabled={isEditing}
                   >
-                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                       <option key={n} value={n}>
                         {n}
                       </option>
@@ -390,9 +365,8 @@ export default function RoomFormModal({
                       }))
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                    disabled={isEditing}
                   >
-                    {[0, 1, 2, 3, 4].map((n) => (
+                    {[0, 1, 2, 3, 4, 5, 6].map((n) => (
                       <option key={n} value={n}>
                         {n}
                       </option>
@@ -400,6 +374,17 @@ export default function RoomFormModal({
                   </select>
                 </div>
               </div>
+
+              {/* Info box for new room types */}
+              {!form.roomTypeId && form.roomType && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> You're creating a new room type "
+                    {form.roomType}". The price and capacity values will be
+                    saved for this new type.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -433,7 +418,6 @@ export default function RoomFormModal({
                 <span className="flex items-center justify-center gap-2">
                   <svg
                     className="animate-spin h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -444,16 +428,16 @@ export default function RoomFormModal({
                       r="10"
                       stroke="currentColor"
                       strokeWidth="4"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8v8H4z"
-                    ></path>
+                    />
                   </svg>
                   Saving...
                 </span>
-              ) : initialData && initialData.room_id ? (
+              ) : isEditing ? (
                 "Update Room"
               ) : (
                 "Save Room"

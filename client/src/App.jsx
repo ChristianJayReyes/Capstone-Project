@@ -24,6 +24,7 @@ import Bookings from './pages/hotelOwner/Bookings'
 import EventReservations from './pages/hotelOwner/EventReservations'
 import EventReservationsLogs from './pages/hotelOwner/EventReservationsLogs'
 import ProtectedRoute from './components/ProtectedRoute'
+import RoomMatrix from './pages/hotelOwner/RoomMatrix'
 
 
 const App = () => {
@@ -60,7 +61,7 @@ const App = () => {
             <Route path="bookings" element={<Bookings />} />
             <Route path='event-reservations' element={<EventReservations />} />
             <Route path='event-reservations-logs' element={<EventReservationsLogs />} />
-            
+            <Route path='room-matrix' element={<RoomMatrix />} />
 
         </Route>
       </Routes>

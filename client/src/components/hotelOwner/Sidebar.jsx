@@ -3,17 +3,17 @@ import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { assets } from "../../assets/assets";
 
-const Sidebar = ({ isCollapsed = true, onHoverChange }) => {
+const SideBar = ({ isCollapsed = true, onHoverChange }) => {
   const location = useLocation();
 
   const sidebarLinks = [
     { name: "Dashboard", path: "/owner", icon: assets.dashboardIcon },
     { name: "Bookings", path: "/owner/bookings", icon: assets.calenderIcon },
     { name: "Booking Logs", path: "/owner/booking-logs", icon: assets.bookinglogsIcon },
+    { name: "Room Matrix", path: "/owner/room-matrix", icon: assets.roommatrixIcon },
     { name: "Rooms", path: "/owner/add-room", icon: assets.addroomsIcon },
     { name: "Event Reservations", path: "/owner/event-reservations", icon: assets.calenderIcon },
     { name: "Event Reservations Logs", path: "/owner/event-reservations-logs", icon: assets.bookinglogsIcon },
-    // Optional future items can be added here
   ];
 
   return (
@@ -54,5 +54,4 @@ const Sidebar = ({ isCollapsed = true, onHoverChange }) => {
   );
 };
 
-export default Sidebar;
-
+export default SideBar;

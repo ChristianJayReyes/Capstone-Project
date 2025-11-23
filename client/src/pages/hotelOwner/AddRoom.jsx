@@ -7,18 +7,8 @@ import RoomTable from "./RoomTable";
 const ITEMS_PER_PAGE = 7;
 const API_BASE = import.meta.env.VITE_API_BASE_ROOMS || "https://rrh-backend.vercel.app/api/rooms";
 
-const roomTypesList = [
-  "Dormitory Room",
-  "Superior Queen",
-  "Superior Twin",
-  "Deluxe Queen",
-  "Deluxe Twin",
-  "Presidential Queen",
-  "Presidential Twin",
-  "Family Room",
-];
-
 export default function AddRoom() {
+  const [roomTypesList, setRoomTypesList] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +20,22 @@ export default function AddRoom() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
+
+  // =================== FETCH ROOM TYPES ===================
+  const fetchRoomTypes = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/admin/getRoomTypes`);
+      const data = res.data?.data ?? [];
+      setRoomTypesList(data);
+    } catch (e) {
+      console.error("Failed to fetch room types:", e);
+      setRoomTypesList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRoomTypes();
+  }, [fetchRoomTypes]);
 
   // =================== FETCH ROOMS ===================
   const cancelTokenRef = useRef(null);
@@ -68,7 +74,6 @@ export default function AddRoom() {
       }));
       
       setRooms(mapped);
-      console.log("Mapped rooms:", mapped);
     } catch (err) {
       if (!axios.isCancel(err)) {
         console.error("Failed to fetch rooms:", err);
@@ -141,15 +146,12 @@ export default function AddRoom() {
         text: e.message,
         confirmButtonColor: "#2563eb",
       });
-      // rollback
       setRooms((prev) => prev.map((r) => (r.room_id === id ? { ...r, status: currentStatus } : r)));
     }
   };
 
   // =================== DELETE SINGLE ROOM ===================
   const handleDeleteRoom = async (id) => {
-    console.log("Deleting room with ID:", id);
-
     if (!id) {
       return Swal.fire({
         icon: "error",
@@ -179,15 +181,10 @@ export default function AddRoom() {
         text: "Please wait a moment.",
         allowOutsideClick: false,
         allowEscapeKey: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
+        didOpen: () => Swal.showLoading(),
       });
 
-      const res = await axios.post(
-        `${API_BASE}/admin/deleteRoom`,
-        { room_id: id }
-      );
+      const res = await axios.post(`${API_BASE}/admin/deleteRoom`, { room_id: id });
 
       if (res.data?.success) {
         Swal.fire({
@@ -198,13 +195,12 @@ export default function AddRoom() {
           timer: 1500,
           showConfirmButton: false,
         });
-
         await fetchRooms();
       } else {
         Swal.fire({
           icon: "error",
           title: "Delete Failed",
-          text: res.data?.message || "Room deletion failed. Please try again.",
+          text: res.data?.message || "Room deletion failed.",
           confirmButtonColor: "#2563eb",
         });
       }
@@ -221,12 +217,7 @@ export default function AddRoom() {
 
   // =================== BULK DELETE ===================
   const handleBulkDelete = async (ids) => {
-    if (!ids || ids.length === 0) {
-      console.log("No rooms selected for deletion.");
-      return;
-    }
-
-    console.log("Selected room IDs to delete:", ids);
+    if (!ids || ids.length === 0) return;
 
     const confirmBulk = await Swal.fire({
       icon: "warning",
@@ -286,8 +277,6 @@ export default function AddRoom() {
         headers: { "Content-Type": "application/json" },
       });
 
-      console.log("Response:", res.data);
-
       if (res.data?.success) {
         Swal.fire({
           icon: "success",
@@ -296,7 +285,8 @@ export default function AddRoom() {
           confirmButtonColor: "#2563eb",
         });
 
-        await fetchRooms();
+        // Refresh both rooms AND room types (in case new type was created)
+        await Promise.all([fetchRooms(), fetchRoomTypes()]);
         return true;
       } else {
         Swal.fire({
@@ -313,6 +303,60 @@ export default function AddRoom() {
         icon: "error",
         title: "Error",
         text: e.response?.data?.message || e.message || "Connection error.",
+        confirmButtonColor: "#2563eb",
+      });
+      return false;
+    }
+  };
+
+  // =================== UPDATE ROOM ===================
+  const handleUpdateRoom = async (id, payload) => {
+    try {
+      // Find room_type_id from roomTypesList if type name is provided
+      const matchedType = roomTypesList.find(
+        rt => rt.name === (payload.room_type || payload.roomType || payload.type_name)
+      );
+
+      const formatted = {
+        room_id: id,
+        room_number: payload.room_number || payload.roomNumber,
+        room_type_id: payload.room_type_id || matchedType?.id || null,
+        type_name: payload.room_type || payload.roomType || payload.type_name,
+        price_per_night: payload.price_per_night ?? payload.pricePerNight,
+        capacity_adults: payload.capacity_adults ?? payload.capacityAdults,
+        capacity_children: payload.capacity_children ?? payload.capacityChildren,
+        status: payload.status || "Available",
+      };
+
+      const res = await axios.post(`${API_BASE}/admin/updateRoom`, formatted, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.data?.success) {
+        // Refresh both rooms AND room types (in case type was updated/created)
+        await Promise.all([fetchRooms(), fetchRoomTypes()]);
+        Swal.fire({
+          icon: "success",
+          title: "Room Updated",
+          text: res.data?.message || "Update successful.",
+          confirmButtonColor: "#2563eb",
+        });
+        return true;
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Update Failed",
+          text: res.data?.message || "Room not updated.",
+          confirmButtonColor: "#2563eb",
+        });
+        return false;
+      }
+    } catch (e) {
+      console.error("Update room error:", e);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to Update",
+        text: e.response?.data?.message || e.message,
         confirmButtonColor: "#2563eb",
       });
       return false;
@@ -377,9 +421,7 @@ export default function AddRoom() {
               >
                 <option value="all">All Room Types</option>
                 {roomTypesList.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
+                  <option key={t.id} value={t.name}>{t.name}</option>
                 ))}
               </select>
             </div>
@@ -437,50 +479,8 @@ export default function AddRoom() {
             }}
             initialData={editingRoom}
             onAdd={handleAddRoom}
-            onUpdate={async (id, payload) => {
-              try {
-                const formatted = {
-                  room_id: id,
-                  room_number: payload.room_number || payload.roomNumber,
-                  room_type_id: payload.room_type_id || payload.roomTypeId,
-                  status: payload.status || "Available",
-                };
-
-                console.log("Updating room:", formatted);
-
-                const res = await axios.post(`${API_BASE}/admin/updateRoom`, formatted, {
-                  headers: { "Content-Type": "application/json" },
-                });
-
-                if (res.data?.success) {
-                  await fetchRooms();
-                  Swal.fire({
-                    icon: "success",
-                    title: "Room Updated",
-                    text: res.data?.message || "Update successful.",
-                    confirmButtonColor: "#2563eb",
-                  });
-                  return true;
-                } else {
-                  Swal.fire({
-                    icon: "error",
-                    title: "Update Failed",
-                    text: res.data?.message || "Room not updated.",
-                    confirmButtonColor: "#2563eb",
-                  });
-                  return false;
-                }
-              } catch (e) {
-                console.error("Update room error:", e);
-                Swal.fire({
-                  icon: "error",
-                  title: "Failed to Update",
-                  text: e.response?.data?.message || e.message,
-                  confirmButtonColor: "#2563eb",
-                });
-                return false;
-              }
-            }}
+            onUpdate={handleUpdateRoom}
+            roomTypesList={roomTypesList}
           />
         )}
       </div>

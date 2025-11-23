@@ -1,28 +1,10 @@
-import React, { useState } from "react";
-import { assets, roomsDummyData } from "../assets/assets";
+import React from "react";
+import { assets } from "../assets/assets";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
-  const [selectedRoom, setSelectedRoom] = useState("");
   const navigate = useNavigate();
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-
-    const matchedRoom = roomsDummyData.find(
-      (room) => room.roomType.toLowerCase() === selectedRoom.toLowerCase()
-    );
-    if (matchedRoom) {
-      navigate(`/rooms/${matchedRoom._id}`);
-      window.scrollTo(0, 0);
-    } else {
-      alert("No rooms found for the selected type.");
-    }
-  };
-
-  //create unique list of room types (no duplicates, stable)
-  const cities = [...new Set(roomsDummyData.map((room) => room.roomType))];
 
   return (
     <section className="relative h-[100vh] flex items-center justify-start overflow-hidden">
@@ -41,10 +23,10 @@ const Hero = () => {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1 }}
-        className="relative z-10 px-8 md:px-20 lg:px-32 max-w-2xl text-white mt-20"
+        className="relative z-10 px-6 md:px-12 lg:px-20 xl:px-32 max-w-4xl text-white"
       >
         <h1 className="text-4xl md:text-6xl font-bold leading-tight text-white drop-shadow-md">
-          Discover Your Perfect <br /> Gateway Destination
+          Discover Your Perfect Gateway Destination
         </h1>
 
         <p className="mt-4 text-gray-200 text-base md:text-lg leading-relaxed">
@@ -52,74 +34,57 @@ const Hero = () => {
           energy. Escape, unwind, and indulge — your perfect getaway awaits.
         </p>
 
-        {/* Search Box */}
-        <motion.form
-          onSubmit={handleSearch}
+        {/* CTA Button */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.8 }}
-          className="mt-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6 shadow-xl w-180"
+          className="mt-10"
         >
-          {/* Type of Room */}
-          <div className="flex flex-col text-sm w-full md:w-auto">
-            <label className="text-gray-200 mb-1 flex items-center gap-2 font-medium">
-              <img
-                src={assets.calenderIcon}
-                alt="icon"
-                className="h-4 opacity-80"
-              />
-              Type of Room
-            </label>
-            <input
-              list="destinations"
-              type="text"
-              placeholder="Type here..."
-              value={selectedRoom}
-              onChange={(e) => setSelectedRoom(e.target.value)}
-              className="px-4 py-2 rounded-lg bg-white/80 text-gray-800 outline-none focus:ring-2 focus:ring-[#007BFF]"
-              required
-            />
-            <datalist id="destinations">
-              {cities.map((city, index) => (
-                <option value={city} key={index} />
-              ))}
-            </datalist>
-          </div>
-
-          {/* Children */}
-          <div className="flex flex-col text-sm w-full md:w-auto">
-            <label className="text-gray-200 mb-1 font-medium">Children</label>
-            <input
-              type="number"
-              placeholder="0"
-              min={1}
-              max={500}
-              className="px-4 py-2 rounded-lg bg-white/80 text-gray-800 outline-none focus:ring-2 focus:ring-[#007BFF]"
-            />
-          </div>
-
-          {/* Adults */}
-          <div className="flex flex-col text-sm w-full md:w-auto">
-            <label className="text-gray-200 mb-1 font-medium">Adults</label>
-            <input
-              type="number"
-              placeholder="0"
-              min={1}
-              max={500}
-              className="px-4 py-2 rounded-lg bg-white/80 text-gray-800 outline-none focus:ring-2 focus:ring-[#007BFF]"
-              required
-            />
-          </div>
-
-          {/* Search Button */}
           <button
-            type="submit"
-            className="flex items-center justify-center gap-2 bg-[#007BFF] hover:bg-[#005FDB] transition-all duration-300 text-white font-semibold py-3 px-6 rounded-xl shadow-md hover:shadow-lg w-full md:w-auto"
+            onClick={() => {
+              navigate("/accommodation");
+              window.scrollTo(0, 0);
+            }}
+            className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold text-lg rounded-xl shadow-2xl hover:shadow-blue-500/50 transform hover:scale-105 transition-all duration-300 overflow-hidden"
           >
-            <img src={assets.searchIcon} alt="searchIcon" className="h-5" />
-            <span>Search</span>
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              Explore Rooms
+              <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
-        </motion.form>
+        </motion.div>
+
+      
+        {/* Floating Decorative Elements */}
+        <motion.div
+          animate={{
+            y: [0, -20, 0],
+            rotate: [0, 5, 0],
+          }}
+          transition={{
+            duration: 6,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute top-20 right-10 md:right-20 w-20 h-20 md:w-32 md:h-32 bg-gradient-to-br from-amber-400/20 to-orange-500/20 rounded-full blur-2xl"
+        />
+        <motion.div
+          animate={{
+            y: [0, 20, 0],
+            rotate: [0, -5, 0],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1,
+          }}
+          className="absolute bottom-20 left-10 md:left-20 w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-full blur-2xl"
+        />
       </motion.div>
     </section>
   );

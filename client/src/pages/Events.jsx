@@ -235,49 +235,89 @@ const EventPage = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10 max-w-7xl mx-auto">
-          {categories.map((category, idx) => (
+          {[
+            {
+              category: "Weddings",
+              image: wed2,
+              gradient: "from-pink-500 via-rose-500 to-red-500",
+              icon: "💍",
+              description: "Elegant ceremonies and unforgettable celebrations"
+            },
+            {
+              category: "Birthdays",
+              image: bday2,
+              gradient: "from-purple-500 via-pink-500 to-fuchsia-500",
+              icon: "🎂",
+              description: "Joyful celebrations for all ages"
+            },
+            {
+              category: "Christenings",
+              image: binyag2,
+              gradient: "from-indigo-500 via-blue-500 to-cyan-500",
+              icon: "👶",
+              description: "Blessed moments and family gatherings"
+            }
+          ].map((item, idx) => (
             <motion.div
-              key={category}
+              key={item.category}
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: idx * 0.1 }}
               viewport={{ once: true }}
               className="group relative"
             >
-              {/* Gradient border effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-3xl blur opacity-0 group-hover:opacity-30 transition duration-500"></div>
+              {/* Enhanced Gradient border effect */}
+              <div className={`absolute -inset-1 bg-gradient-to-r ${item.gradient} rounded-3xl blur-xl opacity-0 group-hover:opacity-50 transition duration-500`}></div>
               
-              <div className="relative rounded-3xl overflow-hidden shadow-xl transition-all duration-500 group-hover:scale-[1.02] group-hover:shadow-2xl h-full">
-                {/* Image */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 group-hover:scale-[1.03] group-hover:shadow-2xl h-full">
+                {/* Image with enhanced effects */}
                 <div className="relative h-80 overflow-hidden">
                   <img
-                    src={eventImages[category.toLowerCase()]}
-                    alt={category}
-                    className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
+                    src={item.image}
+                    alt={item.category}
+                    className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-125"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                  
+                  {/* Multi-layer gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/30"></div>
+                  <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500`}></div>
+                  
+                  {/* Shine effect on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  
+                  {/* Icon badge */}
+                  <div className="absolute top-4 right-4 w-14 h-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl transform group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    {item.icon}
+                  </div>
                 </div>
 
-                {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                  <h3 className="text-2xl md:text-3xl font-bold mb-2 group-hover:text-pink-300 transition-colors">
-                    {category}
-                  </h3>
-                  <p className="text-sm opacity-90 leading-relaxed mb-5">
-                    Celebrate your special day with our luxurious{" "}
-                    {category.toLowerCase()} packages.
-                  </p>
+                {/* Enhanced Content */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white">
+                  <div className="mb-3">
+                    <h3 className="text-3xl md:text-4xl font-extrabold mb-2 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-pink-300 group-hover:via-purple-300 group-hover:to-indigo-300 group-hover:bg-clip-text transition-all duration-300">
+                      {item.category}
+                    </h3>
+                    <p className="text-sm sm:text-base opacity-95 leading-relaxed font-medium">
+                      {item.description}
+                    </p>
+                  </div>
 
                   <motion.button
                     onClick={() => {
-                      setSelectedCategory(category.toLowerCase());
+                      setSelectedCategory(item.category.toLowerCase());
                       setOpenGallery(true);
                     }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="inline-block bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-500 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-pink-500/50 transition-all text-sm"
+                    className={`inline-block bg-gradient-to-r ${item.gradient} hover:opacity-90 text-white font-semibold px-6 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 text-sm sm:text-base relative overflow-hidden group/btn`}
                   >
-                    See More →
+                    <span className="relative z-10 flex items-center gap-2">
+                      See More
+                      <svg className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 transform -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"></div>
                   </motion.button>
                 </div>
               </div>

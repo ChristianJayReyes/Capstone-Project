@@ -66,6 +66,7 @@ export const createBooking = async (req, res) => {
     const basePrice = parseFloat(req.body.basePrice) || totalPrice;
     const bookingTotalPrice = parseFloat(req.body.bookingTotalPrice) || totalPrice;
     const roomCount = parseInt(req.body.roomCount) || 1;
+    const roomQuantity = parseInt(req.body.roomQuantity) || roomCount; // New: quantity from frontend
     const discountAmount = parseFloat(req.body.discountAmount) || 0;
     const isPaid = req.body.isPaid === "true" || req.body.isPaid === true;
     const discountType = req.body.discountType || "None";
@@ -84,6 +85,33 @@ export const createBooking = async (req, res) => {
 
     const db = await connectDB();
 
+    // Convert ISO date to MySQL DATE format (YYYY-MM-DD) - needed for room assignment
+    const formatDate = (date) => new Date(date).toISOString().slice(0, 10);
+    const formattedCheckIn = formatDate(checkInDate);
+    const formattedCheckOut = formatDate(checkOutDate);
+
+    // Get room_type_id - try to use roomId first, otherwise look up by roomName
+    let roomTypeId = roomId;
+    const roomName = req.body.roomName;
+    
+    if (!roomTypeId && roomName) {
+      // Look up room_type_id by type_name
+      const [roomTypeRows] = await db.query(
+        "SELECT room_type_id FROM room_types WHERE type_name = ?",
+        [roomName]
+      );
+      if (roomTypeRows.length > 0) {
+        roomTypeId = roomTypeRows[0].room_type_id;
+      }
+    }
+    
+    if (!roomTypeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Room type not found. Please provide a valid room type.",
+      });
+    }
+
     // Parse room numbers array (if provided)
     let roomNumbers = [];
     if (req.body.roomNumbers) {
@@ -96,10 +124,61 @@ export const createBooking = async (req, res) => {
         // if parsing fails, ignore
       }
     }
-    if (roomNumbers.length === 0 && roomNumber) {
+    
+    // If no specific room numbers provided but quantity is specified, auto-assign rooms
+    if (roomNumbers.length === 0 && roomQuantity > 0) {
+      // Get available rooms for this room type
+      const [availableRooms] = await db.query(
+        `SELECT r.room_id, r.room_number, r.status
+         FROM rooms r
+         JOIN room_types rt ON r.room_type_id = rt.room_type_id
+         WHERE rt.room_type_id = ? AND r.status = 'available'
+         ORDER BY r.room_number`,
+        [roomTypeId]
+      );
+
+      // Filter out rooms that are already booked for the selected dates
+      const availableRoomNumbers = [];
+      for (const room of availableRooms) {
+        const [existingBookings] = await db.query(
+          `SELECT * FROM bookings
+           WHERE room_number = ?
+           AND (
+             (check_in <= ? AND check_out >= ?) OR
+             (check_in <= ? AND check_out >= ?) OR
+             (? <= check_in AND ? >= check_out)
+           )`,
+          [
+            room.room_number,
+            formattedCheckIn,
+            formattedCheckIn,
+            formattedCheckOut,
+            formattedCheckOut,
+            formattedCheckIn,
+            formattedCheckOut,
+          ]
+        );
+
+        if (existingBookings.length === 0) {
+          availableRoomNumbers.push(room.room_number);
+          if (availableRoomNumbers.length >= roomQuantity) {
+            break; // We have enough rooms
+          }
+        }
+      }
+
+      if (availableRoomNumbers.length < roomQuantity) {
+        return res.status(400).json({
+          success: false,
+          message: `❌ Only ${availableRoomNumbers.length} room(s) available for the selected dates. Requested: ${roomQuantity}.`,
+        });
+      }
+
+      // Assign the requested quantity of rooms
+      roomNumbers = availableRoomNumbers.slice(0, roomQuantity);
+    } else if (roomNumbers.length === 0 && roomNumber) {
       roomNumbers = [roomNumber];
-    }
-    if (roomNumbers.length === 0) {
+    } else if (roomNumbers.length === 0) {
       roomNumbers = [null]; // allow admin to assign later
     }
 
@@ -118,11 +197,6 @@ export const createBooking = async (req, res) => {
         // Continue without ID image if upload fails
       }
     }
-
-    //  Convert ISO date to MySQL DATE format (YYYY-MM-DD)
-    const formatDate = (date) => new Date(date).toISOString().slice(0, 10);
-    const formattedCheckIn = formatDate(checkInDate);
-    const formattedCheckOut = formatDate(checkOutDate);
 
     // Adults and children are already parsed above
     const adultsCount = adults;
@@ -194,7 +268,7 @@ export const createBooking = async (req, res) => {
         (user_id, room_type_id, room_number, check_in, check_out, adults, children, total_price, payment_status, status`;
       let insertValues = [
         req.user.user_id || null,
-        roomId,
+        roomTypeId,
         currentRoomNumber || null,
         formattedCheckIn,
         formattedCheckOut,
@@ -263,21 +337,20 @@ export const createBooking = async (req, res) => {
     // const pool = await connectDB();
     const [roomRows] = await db.query(
       `SELECT rt.type_name AS roomName
-      FROM rooms r
-      JOIN room_types rt ON r.room_type_id = rt.room_type_id
-      WHERE r.room_type_id = ?`,
-      [roomId]
+      FROM room_types rt
+      WHERE rt.room_type_id = ?`,
+      [roomTypeId]
     );
 
-    const roomName = roomRows[0]?.roomName || "Unknown Room";
+    const roomTypeName = roomRows[0]?.roomName || roomName || "Unknown Room";
     const primaryBooking = bookingsCreated[0];
 
     const reservationDetails = {
       bookingId: primaryBooking?.booking_id,
       checkInDate: formattedCheckIn,
       checkOutDate: formattedCheckOut,
-      roomId,
-      roomName, 
+      roomId: roomTypeId,
+      roomName: roomTypeName, 
       totalPrice: bookingTotalPrice,
       guests: {
         adults,

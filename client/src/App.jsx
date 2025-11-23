@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import Navbar from './components/Navbar'
 import { data, Route, Routes, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
@@ -26,50 +26,68 @@ import EventReservationsLogs from './pages/hotelOwner/EventReservationsLogs'
 import ProtectedRoute from './components/ProtectedRoute'
 import RoomMatrix from './pages/hotelOwner/RoomMatrix'
 import UpdateProfile from './pages/UpdateProfile'
+import LoadingScreen from './components/LoadingScreen'
+import { AnimatePresence } from 'framer-motion'
 
 
 const App = () => {
-  
+  const [isLoading, setIsLoading] = useState(true);
   const isOwnerPath = useLocation().pathname.includes("owner");
   const {showHotelReg} = useAppContext();
 
+  useEffect(() => {
+    // Simulate app loading - you can adjust the timing or add actual loading logic
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500); // 2.5 seconds loading time
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div>
-      <Toaster />
-      {!isOwnerPath && <Navbar />}
-      {showHotelReg && <HotelReg />} 
-    <div className='min-h-[70vh]'>
-      <Routes>
-        <Route path='/' element={<Home/>} />
-        <Route path='/accommodation' element={<AllRooms/>} />
-        <Route path='/events' element={<Events />} />
-        <Route path='/dining' element={<Dining/>}/>
-        <Route path='/about' element={<About/>}/>
-        <Route path='/offers' element={<Offers/>}/>
-        
-        <Route path='/login' element={<LoginForm />} />
-        <Route path='/reset-password' element={<LoginForm />} />
+      <AnimatePresence>
+        {isLoading && <LoadingScreen />}
+      </AnimatePresence>
+      
+      {!isLoading && (
+        <>
+          <Toaster />
+          {!isOwnerPath && <Navbar />}
+          {showHotelReg && <HotelReg />} 
+          <div className='min-h-[70vh]'>
+            <Routes>
+              <Route path='/' element={<Home/>} />
+              <Route path='/accommodation' element={<AllRooms/>} />
+              <Route path='/events' element={<Events />} />
+              <Route path='/dining' element={<Dining/>}/>
+              <Route path='/about' element={<About/>}/>
+              <Route path='/offers' element={<Offers/>}/>
+              
+              <Route path='/login' element={<LoginForm />} />
+              <Route path='/reset-password' element={<LoginForm />} />
 
-        <Route path='/rooms/:id' element={<RoomDetails/>} />
-        <Route path='/my-bookings' element={<MyBookings/>} />
-        <Route path='/update-profile' element={<ProtectedRoute><UpdateProfile/></ProtectedRoute>} />
+              <Route path='/rooms/:id' element={<RoomDetails/>} />
+              <Route path='/my-bookings' element={<MyBookings/>} />
+              <Route path='/update-profile' element={<ProtectedRoute><UpdateProfile/></ProtectedRoute>} />
 
-        <Route path='/owner' element={<ProtectedRoute><Layout/></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="add-room" element={<AddRoom />} />
-            <Route path="add-event" element={<AddEvent />} />
-            <Route path="booking-logs" element={<Booking_logs />} />
-            <Route path="bookings" element={<Bookings />} />
-            <Route path='event-reservations' element={<EventReservations />} />
-            <Route path='event-reservations-logs' element={<EventReservationsLogs />} />
-            <Route path='room-matrix' element={<RoomMatrix />} />
+              <Route path='/owner' element={<ProtectedRoute><Layout/></ProtectedRoute>}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="add-room" element={<AddRoom />} />
+                  <Route path="add-event" element={<AddEvent />} />
+                  <Route path="booking-logs" element={<Booking_logs />} />
+                  <Route path="bookings" element={<Bookings />} />
+                  <Route path='event-reservations' element={<EventReservations />} />
+                  <Route path='event-reservations-logs' element={<EventReservationsLogs />} />
+                  <Route path='room-matrix' element={<RoomMatrix />} />
 
-        </Route>
-      </Routes>
-    </div>
-    <Footer />
-    <FaqButton />
+              </Route>
+            </Routes>
+          </div>
+          <Footer />
+          <FaqButton />
+        </>
+      )}
     </div>
   )
 }

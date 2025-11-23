@@ -179,8 +179,8 @@ const RoomDetails = () => {
 
       // Room Information — auto-fill as requested
       roomName: room?.hotel?.name || "",
-      roomNumber: "", // Will be assigned by backend
-      roomNumbers: [], // Will be assigned by backend based on quantity
+      roomNumber: "", // Will be assigned by admin later
+      roomNumbers: [], // Will be assigned by admin later
       roomQuantity: roomQuantity, // Pass quantity instead
       roomRate: room?.pricePerNight || 0,
       // Deposit & Payment — included for display; if inputs are filled they'll be included
@@ -219,10 +219,10 @@ const RoomDetails = () => {
       const formDataToSend = new FormData();
       formDataToSend.append("email", formData.email);
       formDataToSend.append("roomId", room?._id);
-      // Send quantity instead of specific room numbers - backend will assign
+      // Send quantity - admin will assign room numbers later
       formDataToSend.append("roomQuantity", roomCount.toString());
-      formDataToSend.append("roomNumbers", JSON.stringify([])); // Empty array - backend assigns
-      formDataToSend.append("roomNumber", ""); // Empty - backend assigns
+      formDataToSend.append("roomNumbers", JSON.stringify([])); // Empty array - admin assigns
+      formDataToSend.append("roomNumber", ""); // Empty - admin assigns
       formDataToSend.append("checkInDate", formData.checkIn);
       formDataToSend.append("checkOutDate", formData.checkOut);
       formDataToSend.append("adults", formData.adults);
@@ -417,7 +417,7 @@ const RoomDetails = () => {
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800 flex items-center gap-2">
                 <span className="text-blue-600">ℹ️</span>
-                Rooms will be assigned automatically based on availability for your selected dates.
+                Room numbers will be assigned by the admin after your booking is confirmed. You will receive an email with your assigned room numbers.
               </p>
             </div>
           )}

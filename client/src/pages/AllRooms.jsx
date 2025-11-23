@@ -158,15 +158,7 @@ const AllRooms = () => {
                 <p className="ml-1 text-gray-500 text-sm">200+ Reviews</p>
               </div>
 
-              <div className="flex items-center gap-1 text-gray-500 mt-2 text-sm">
-                <img
-                  src={assets.locationIcon}
-                  alt="location-Icon"
-                  className="w-4 h-4"
-                />
-                <span>{room.hotel.address}</span>
-              </div>
-
+            
               <div className="flex flex-wrap items-center mt-3 mb-6 gap-3">
                 {room.amenities.map((item, index) => (
                   <div

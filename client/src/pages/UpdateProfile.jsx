@@ -83,7 +83,7 @@ const UpdateProfile = () => {
 
     try {
       const response = await axios.put(
-        "/api/users/update-profile",
+        "/api/user/update-profile",
         {
           full_name: formData.full_name,
           phone: formData.phone,

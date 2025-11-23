@@ -19,6 +19,55 @@ export const getUserData = async (req, res) => {
     }
 }
 
+// Get full user profile (for Google login)
+export const getUserProfile = async (req, res) => {
+    try {
+        const db = await connectDB();
+        const userId = req.user.user_id || req.user.id;
+        
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID not found"
+            });
+        }
+
+        // Get all available columns
+        const [columns] = await db.query("SHOW COLUMNS FROM users");
+        const columnNames = columns.map(col => col.Field);
+        
+        // Select only columns that exist
+        const selectColumns = ['user_id', 'full_name', 'email', 'role'];
+        if (columnNames.includes('phone')) selectColumns.push('phone');
+        if (columnNames.includes('address')) selectColumns.push('address');
+        if (columnNames.includes('photo')) selectColumns.push('photo');
+
+        const [users] = await db.query(
+            `SELECT ${selectColumns.join(', ')} FROM users WHERE user_id = ?`,
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            user: users[0]
+        });
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error fetching user profile",
+            error: error.message
+        });
+    }
+}
+
 //Recent Searched Cities
 export const storeRecentSearchedCities = async (req, res) => {
     try {

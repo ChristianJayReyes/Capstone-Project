@@ -183,14 +183,12 @@ router.get(
     const token = jwt.sign(
       { id: req.user.user_id, email: req.user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "3d" }
     );
 
-    // Send back both token + user
-    const userData = encodeURIComponent(JSON.stringify(req.user));
-
-    // redirect to frontend with both
-    res.redirect(`https://rosario-resort-and-hotel.vercel.app?token=${token}&user=${userData}`);
+    // Only send token in URL to avoid URI_TOO_LONG error
+    // Frontend will fetch user data using the token
+    res.redirect(`https://rosario-resort-and-hotel.vercel.app?token=${token}`);
   }
 );
 

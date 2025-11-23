@@ -38,6 +38,13 @@ const UpdateProfile = () => {
     }
   }, [user, navigate]);
 
+  // Sync photoPreview with formData.photo
+  useEffect(() => {
+    if (formData?.photo) {
+      setPhotoPreview(formData.photo);
+    }
+  }, [formData?.photo]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -61,19 +68,18 @@ const UpdateProfile = () => {
         return;
       }
 
-      // Create preview
+      // Create preview and store base64
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoPreview(reader.result);
+        const base64String = reader.result;
+        setPhotoPreview(base64String);
+        // Update formData with the base64 string
+        setFormData((prev) => ({
+          ...prev,
+          photo: base64String,
+        }));
       };
       reader.readAsDataURL(file);
-
-      // For now, we'll just store the preview URL
-      // In production, you'd upload to Cloudinary or similar
-      setFormData((prev) => ({
-        ...prev,
-        photo: reader.result,
-      }));
     }
   };
 
@@ -100,10 +106,18 @@ const UpdateProfile = () => {
       if (response.data.success) {
         toast.success("Profile updated successfully!");
         // Update user in context and localStorage
-        const updatedUser = { ...user, ...response.data.user };
+        const updatedUser = { 
+          ...user, 
+          ...response.data.user,
+          photo: response.data.user.photo || user.photo // Ensure photo is included
+        };
         setUser(updatedUser);
         localStorage.setItem("user", JSON.stringify(updatedUser));
-        navigate("/");
+        
+        // Small delay to ensure state updates before navigation
+        setTimeout(() => {
+          navigate("/");
+        }, 100);
       } else {
         toast.error(response.data.message || "Failed to update profile");
       }

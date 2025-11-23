@@ -30,7 +30,7 @@ const RoomDetails = () => {
 
   // Room Number (static - for display only)
   const [roomNumbers, setRoomNumbers] = useState([]);
-  const [selectedRooms, setSelectedRooms] = useState([]);
+  const [roomQuantity, setRoomQuantity] = useState(1);
 
   // Context
   const { axios, token, user, setBookings } = useAppContext();
@@ -54,7 +54,7 @@ const RoomDetails = () => {
       const typeName = room?.hotel?.name || room?.roomType || "";
       if (!typeName) {
         setRoomNumbers([]);
-        setSelectedRooms([]);
+        setRoomQuantity(1);
         return;
       }
 
@@ -78,20 +78,18 @@ const RoomDetails = () => {
           });
 
         setRoomNumbers(filteredRoomNumbers);
-        setSelectedRooms((prev) => {
-          const next = prev.filter((num) => filteredRoomNumbers.includes(num));
-          return next.length > 0 ? next : [];
-        });
+        // Reset quantity to 1 when rooms change
+        setRoomQuantity(1);
       } else {
         const hotel = hotelDummyData.find(
           (hotelItem) => hotelItem.name === room.hotel.name
         );
         if (hotel && hotel.roomNumbers) {
           setRoomNumbers(hotel.roomNumbers);
-          setSelectedRooms([]);
+          setRoomQuantity(1);
         } else {
           setRoomNumbers([]);
-          setSelectedRooms([]);
+          setRoomQuantity(1);
         }
       }
     } catch (error) {
@@ -101,10 +99,10 @@ const RoomDetails = () => {
       );
       if (hotel && hotel.roomNumbers) {
         setRoomNumbers(hotel.roomNumbers);
-        setSelectedRooms([]);
+        setRoomQuantity(1);
       } else {
         setRoomNumbers([]);
-        setSelectedRooms([]);
+        setRoomQuantity(1);
       }
     }
   }, [room]);
@@ -126,29 +124,17 @@ const RoomDetails = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (selectedRooms.length === 0) {
-      alert("Please select at least one available room.");
+    if (roomQuantity < 1 || roomQuantity > roomNumbers.length) {
+      alert(`Please select a quantity between 1 and ${roomNumbers.length}.`);
       return;
     }
 
-    try {
-      for (const roomNumber of selectedRooms) {
-        const response = await fetch(
-          `https://rrh-backend.vercel.app/api/rooms/check/${roomNumber}`
-        );
-        const data = await response.json();
-
-        if (!data.success) {
-          alert(data.message);
-          return;
-        }
-      }
-
-      setIsOpen(true);
-    } catch (error) {
-      console.error(error);
-      alert("Error checking room availability");
+    if (roomNumbers.length === 0) {
+      alert("No rooms available for booking.");
+      return;
     }
+
+    setIsOpen(true);
   };
 
   // Build reservationDetails from current inputs and state.
@@ -193,8 +179,9 @@ const RoomDetails = () => {
 
       // Room Information — auto-fill as requested
       roomName: room?.hotel?.name || "",
-      roomNumber: selectedRooms[0] || "",
-      roomNumbers: selectedRooms,
+      roomNumber: "", // Will be assigned by backend
+      roomNumbers: [], // Will be assigned by backend based on quantity
+      roomQuantity: roomQuantity, // Pass quantity instead
       roomRate: room?.pricePerNight || 0,
       // Deposit & Payment — included for display; if inputs are filled they'll be included
       deposit: document.getElementById("deposit")?.value || 0,
@@ -223,10 +210,7 @@ const RoomDetails = () => {
         Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
       );
 
-      const roomCount =
-        Array.isArray(formData.roomNumbers) && formData.roomNumbers.length > 0
-          ? formData.roomNumbers.length
-          : 1;
+      const roomCount = formData.roomQuantity || 1;
 
       const pricePerRoom = Number(formData.roomRate) * nights;
       const totalPrice = pricePerRoom * roomCount;
@@ -235,15 +219,10 @@ const RoomDetails = () => {
       const formDataToSend = new FormData();
       formDataToSend.append("email", formData.email);
       formDataToSend.append("roomId", room?._id);
-      const roomNumbersPayload =
-        Array.isArray(formData.roomNumbers) && formData.roomNumbers.length > 0
-          ? formData.roomNumbers
-          : formData.roomNumber
-          ? [formData.roomNumber]
-          : [];
-
-      formDataToSend.append("roomNumbers", JSON.stringify(roomNumbersPayload));
-      formDataToSend.append("roomNumber", roomNumbersPayload[0] || "");
+      // Send quantity instead of specific room numbers - backend will assign
+      formDataToSend.append("roomQuantity", roomCount.toString());
+      formDataToSend.append("roomNumbers", JSON.stringify([])); // Empty array - backend assigns
+      formDataToSend.append("roomNumber", ""); // Empty - backend assigns
       formDataToSend.append("checkInDate", formData.checkIn);
       formDataToSend.append("checkOutDate", formData.checkOut);
       formDataToSend.append("adults", formData.adults);
@@ -278,7 +257,7 @@ const RoomDetails = () => {
         const newBookings = data.bookings || (data.booking ? [data.booking] : []);
         setBookings((prev) => [...newBookings, ...prev]);
         setShowForm(false);
-        setSelectedRooms([]);
+        setRoomQuantity(1);
         fetchAvailableRooms();
       } else {
         toast.error(data.message || "Booking failed");
@@ -355,113 +334,104 @@ const RoomDetails = () => {
         {/* Check In/Out Form */}
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white shadow-[0px_0px_20px_rgba(0,0,0,0.15)] rounded-xl p-6 mx-auto mt-16 max-w-6xl"
+          className="bg-white shadow-[0px_4px_20px_rgba(0,0,0,0.1)] rounded-2xl p-6 md:p-8 mx-auto mt-16 max-w-6xl border border-gray-100"
         >
-          <div className="flex flex-col flex-wrap md:flex-row items-start md:items-center gap-4 md:gap-10 text-gray-500">
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">Book Your Stay</h3>
+            <p className="text-sm text-gray-500">Select your preferences and check availability</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             {/* Adults */}
             <div className="flex flex-col">
-              <label htmlFor="adults" className="font-medium">
+              <label htmlFor="adults" className="text-sm font-medium text-gray-700 mb-2">
                 Adults
               </label>
               <input
                 type="number"
                 id="adults"
-                placeholder="0"
-                className="max-w-20 rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none"
+                placeholder="1"
+                min="1"
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                 required
                 defaultValue={1}
               />
             </div>
 
-            {/* Divider */}
-            <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
-
             {/* Children */}
             <div className="flex flex-col">
-              <label htmlFor="children" className="font-medium">
+              <label htmlFor="children" className="text-sm font-medium text-gray-700 mb-2">
                 Children
               </label>
               <input
                 type="number"
                 id="children"
                 placeholder="0"
-                className="max-w-20 rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none"
+                min="0"
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                 defaultValue={0}
               />
             </div>
 
-            {/* Divider */}
-            <div className="w-px h-15 bg-gray-300/70 max-md:hidden"></div>
-
-            {/* Room Number (Static Display) */}
+            {/* Available Rooms Count */}
             <div className="flex flex-col">
-              <label className="font-medium">
-                Available Rooms Today
+              <label className="text-sm font-medium text-gray-700 mb-2">
+                Available Rooms
               </label>
-              <div className="px-6 py-3 rounded-lg bg-gray-100 text-gray-800 text-2xl font-semibold text-center min-w-[90px]">
-                {roomNumbers.length}
+              <div className="relative">
+                <div className="w-full rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 px-4 py-3 text-center">
+                  <span className="text-3xl font-bold text-primary">{roomNumbers.length}</span>
+                  <p className="text-xs text-gray-600 mt-1">rooms available</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {roomNumbers.length > 0
-                  ? "Room will be assigned by admin"
-                  : "No rooms available today"}
-              </p>
-              <div className="mt-4 space-y-2">
-                {roomNumbers.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {roomNumbers.map((num) => {
-                      const isChecked = selectedRooms.includes(num);
-                      return (
-                        <label
-                          key={num}
-                          className={`flex items-center justify-between border rounded-lg px-3 py-2 text-sm cursor-pointer transition ${
-                            isChecked
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-gray-200"
-                          }`}
-                        >
-                          <span>Room {num}</span>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedRooms((prev) => [
-                                  ...prev,
-                                  num,
-                                ]);
-                              } else {
-                                setSelectedRooms((prev) =>
-                                  prev.filter((room) => room !== num)
-                                );
-                              }
-                            }}
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">
-                    No rooms available today
-                  </p>
-                )}
-                <p className="text-xs text-gray-600">
-                  Selected:{" "}
-                  {selectedRooms.length > 0
-                    ? selectedRooms.join(", ")
-                    : "None"}
-                </p>
-              </div>
+            </div>
+
+            {/* Room Quantity Selection */}
+            <div className="flex flex-col">
+              <label htmlFor="roomQuantity" className="text-sm font-medium text-gray-700 mb-2">
+                How Many Rooms?
+              </label>
+              {roomNumbers.length > 0 ? (
+                <select
+                  id="roomQuantity"
+                  value={roomQuantity}
+                  onChange={(e) => setRoomQuantity(parseInt(e.target.value))}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all cursor-pointer"
+                >
+                  {Array.from({ length: roomNumbers.length }, (_, i) => i + 1).map((num) => (
+                    <option key={num} value={num}>
+                      {num} {num === 1 ? 'Room' : 'Rooms'}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-500 bg-gray-50 text-center">
+                  No rooms available
+                </div>
+              )}
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="bg-primary hover:bg-primary-dull active:scale-95 transition-all text-white rounded-md max-md:w-full md:mt-4 md:px-25 py-3 md:py-4 text-base cursor-pointer"
-          >
-            Check Date
-          </button>
+          {/* Info Message */}
+          {roomNumbers.length > 0 && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 flex items-center gap-2">
+                <span className="text-blue-600">ℹ️</span>
+                Rooms will be assigned automatically based on availability for your selected dates.
+              </p>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={roomNumbers.length === 0}
+              className="bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed active:scale-95 transition-all text-white rounded-lg px-8 py-3 text-base font-medium shadow-md hover:shadow-lg disabled:shadow-none"
+            >
+              Check Availability & Select Dates
+            </button>
+          </div>
         </form>
 
         {/* Date Picker Modal */}

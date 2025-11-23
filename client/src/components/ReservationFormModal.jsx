@@ -31,15 +31,53 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
         roomNumber: data.roomNumber || "",
         roomRate: data.roomRate || 0,
         roomNumbers: data.roomNumbers || [],
+        roomQuantity: data.roomQuantity || 1,
         deposit: data.deposit || 0,
         payment: data.payment || "Cash",
         signature: data.signature || "",
         remarks: data.remarks || "",
+        totalPrice: data.totalPrice || 0,
       });
     } else {
       setFormData(null);
     }
   }, [data, isOpen]);
+
+  // Calculate total price automatically based on dates, room rate, and room quantity
+  useEffect(() => {
+    if (!formData) return;
+
+    const calculateTotalPrice = () => {
+      if (!formData.checkIn || !formData.checkOut) {
+        return 0;
+      }
+
+      const checkInDate = new Date(formData.checkIn);
+      const checkOutDate = new Date(formData.checkOut);
+
+      // Calculate number of nights
+      const timeDiff = checkOutDate - checkInDate;
+      const nights = Math.max(1, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
+
+      // Get room rate and quantity
+      const roomRate = Number(formData.roomRate) || 0;
+      const roomQuantity = Number(formData.roomQuantity) || 1;
+
+      // Calculate total: price per night * nights * number of rooms
+      const totalPrice = roomRate * nights * roomQuantity;
+
+      return totalPrice;
+    };
+
+    const newTotalPrice = calculateTotalPrice();
+    // Only update if the calculated price is different from current (avoid infinite loops)
+    setFormData((prev) => {
+      if (prev && Math.abs(Number(prev.totalPrice) - newTotalPrice) > 0.01) {
+        return { ...prev, totalPrice: newTotalPrice };
+      }
+      return prev;
+    });
+  }, [formData?.checkIn, formData?.checkOut, formData?.roomRate, formData?.roomQuantity]);
 
   if (!isOpen || !formData) return null;
 
@@ -217,13 +255,22 @@ const ReservationFormModal = ({ isOpen, onClose, data, onSubmit }) => {
                     placeholder="Room Rate"
                     className="rounded-lg border px-3 py-2"
                     type="number"
+                    readOnly
                   />
-                  {formData.roomNumbers && formData.roomNumbers.length > 0 && (
+                  {formData.roomQuantity && formData.roomQuantity > 0 && (
                     <div className="rounded-lg border px-3 py-2 bg-gray-50 text-sm text-gray-700">
-                      <span className="font-medium mr-2">Selected Rooms:</span>
-                      {formData.roomNumbers.join(", ")}
+                      <span className="font-medium mr-2">Number of Rooms:</span>
+                      {formData.roomQuantity}
                     </div>
                   )}
+                  <input
+                    value={formData.totalPrice}
+                    onChange={(e) => handleChange("totalPrice", e.target.value)}
+                    placeholder="Total Price"
+                    className="rounded-lg border px-3 py-2"
+                    type="number"
+                    readOnly
+                  />
                 </div>
               </section>
 

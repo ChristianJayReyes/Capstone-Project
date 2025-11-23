@@ -112,74 +112,11 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // Parse room numbers array (if provided)
-    let roomNumbers = [];
-    if (req.body.roomNumbers) {
-      try {
-        const parsed = JSON.parse(req.body.roomNumbers);
-        if (Array.isArray(parsed)) {
-          roomNumbers = parsed.filter((num) => typeof num === "string" && num.trim() !== "");
-        }
-      } catch (error) {
-        // if parsing fails, ignore
-      }
-    }
-    
-    // If no specific room numbers provided but quantity is specified, auto-assign rooms
-    if (roomNumbers.length === 0 && roomQuantity > 0) {
-      // Get available rooms for this room type
-      const [availableRooms] = await db.query(
-        `SELECT r.room_id, r.room_number, r.status
-         FROM rooms r
-         JOIN room_types rt ON r.room_type_id = rt.room_type_id
-         WHERE rt.room_type_id = ? AND r.status = 'available'
-         ORDER BY r.room_number`,
-        [roomTypeId]
-      );
-
-      // Filter out rooms that are already booked for the selected dates
-      const availableRoomNumbers = [];
-      for (const room of availableRooms) {
-        const [existingBookings] = await db.query(
-          `SELECT * FROM bookings
-           WHERE room_number = ?
-           AND (
-             (check_in <= ? AND check_out >= ?) OR
-             (check_in <= ? AND check_out >= ?) OR
-             (? <= check_in AND ? >= check_out)
-           )`,
-          [
-            room.room_number,
-            formattedCheckIn,
-            formattedCheckIn,
-            formattedCheckOut,
-            formattedCheckOut,
-            formattedCheckIn,
-            formattedCheckOut,
-          ]
-        );
-
-        if (existingBookings.length === 0) {
-          availableRoomNumbers.push(room.room_number);
-          if (availableRoomNumbers.length >= roomQuantity) {
-            break; // We have enough rooms
-          }
-        }
-      }
-
-      if (availableRoomNumbers.length < roomQuantity) {
-        return res.status(400).json({
-          success: false,
-          message: `❌ Only ${availableRoomNumbers.length} room(s) available for the selected dates. Requested: ${roomQuantity}.`,
-        });
-      }
-
-      // Assign the requested quantity of rooms
-      roomNumbers = availableRoomNumbers.slice(0, roomQuantity);
-    } else if (roomNumbers.length === 0 && roomNumber) {
-      roomNumbers = [roomNumber];
-    } else if (roomNumbers.length === 0) {
-      roomNumbers = [null]; // allow admin to assign later
+    // Room numbers will NOT be auto-assigned - admin will assign them later
+    // Create bookings with room_number = NULL based on quantity
+    const roomNumbers = [];
+    for (let i = 0; i < roomQuantity; i++) {
+      roomNumbers.push(null); // All bookings created without room numbers - admin assigns later
     }
 
     // Upload ID image to Cloudinary if provided
@@ -202,39 +139,8 @@ export const createBooking = async (req, res) => {
     const adultsCount = adults;
     const childrenCount = children;
 
-    //  Check if the room type is already booked within the selected range
-    // Note: Room number can be null (will be assigned by admin)
-    // We check availability by room_type_id instead
-    // Helper to check if a specific room number is already booked
-    const ensureRoomAvailable = async (targetRoomNumber) => {
-      if (!targetRoomNumber) return;
-      const [existingBookings] = await db.query(
-        `SELECT * FROM bookings
-         WHERE room_number = ?
-         AND (
-           (check_in <= ? AND check_out >= ?) OR
-           (check_in <= ? AND check_out >= ?) OR
-           (? <= check_in AND ? >= check_out)
-         )`,
-        [
-          targetRoomNumber,
-          formattedCheckIn,
-          formattedCheckIn,
-          formattedCheckOut,
-          formattedCheckOut,
-          formattedCheckIn,
-          formattedCheckOut,
-        ]
-      );
-
-      if (existingBookings.length > 0) {
-        throw new Error(`❌ Room ${targetRoomNumber} is already booked for the selected dates.`);
-      }
-    };
-
-    for (const currentRoom of roomNumbers) {
-      await ensureRoomAvailable(currentRoom);
-    }
+    // Room numbers are not assigned at booking time - admin will assign later
+    // No need to check room availability here since room_number will be NULL
 
     // Cache column existence checks
     const columnCache = {};
@@ -321,14 +227,14 @@ export const createBooking = async (req, res) => {
 
       bookingsCreated.push({
         booking_id: result.insertId,
-        room_number: currentRoomNumber,
+        room_number: null, // Room number will be assigned by admin later
       });
     }
 
     //  Respond to frontend
     res.status(201).json({
       success: true,
-      message: `✅ Booking created successfully for ${bookingsCreated.length} room(s)!`,
+      message: `✅ Booking request submitted successfully for ${bookingsCreated.length} room(s)! Room numbers will be assigned by the admin.`,
       booking: bookingsCreated[0],
       bookings: bookingsCreated,
     });
@@ -356,7 +262,7 @@ export const createBooking = async (req, res) => {
         adults,
         children,
       },
-      roomsBooked: bookingsCreated.map((booking) => booking.room_number).filter(Boolean),
+      roomsBooked: [], // Room numbers will be assigned by admin later
     };
 
     await sendReservationEmail(email, reservationDetails);

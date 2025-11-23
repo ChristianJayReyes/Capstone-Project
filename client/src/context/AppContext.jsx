@@ -35,23 +35,39 @@ export const AppProvider = ({ children }) => {
     setSearchedCities([]);
   };
 
-  // FIXED GOOGLE LOGIN PARSE BUG
+  // Handle Google OAuth callback - fetch user data from token
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get("token");
-    const urlUser = params.get("user");
 
-    // Prevent crash when user=undefined
-    if (urlToken && urlUser && urlUser !== "undefined") {
-      try {
-        const parsedUser = JSON.parse(decodeURIComponent(urlUser));
-        loginUser(parsedUser, urlToken);
+    if (urlToken) {
+      // Store token first
+      setToken(urlToken);
+      localStorage.setItem("token", urlToken);
 
-        // Clean URL
-        window.history.replaceState({}, document.title, "/");
-      } catch (err) {
-        console.error("Google login user parsing failed:", err);
-      }
+      // Fetch user data from backend using token
+      const fetchUserFromToken = async () => {
+        try {
+          const { data } = await axios.get("/api/user/profile", {
+            headers: { Authorization: `Bearer ${urlToken}` },
+          });
+
+          if (data.success && data.user) {
+            loginUser(data.user, urlToken);
+          } else {
+            console.error("Failed to fetch user data");
+            toast.error("Failed to load user data");
+          }
+        } catch (error) {
+          console.error("Error fetching user from token:", error);
+          toast.error("Failed to load user data");
+        } finally {
+          // Clean URL
+          window.history.replaceState({}, document.title, "/");
+        }
+      };
+
+      fetchUserFromToken();
     }
   }, []);
 

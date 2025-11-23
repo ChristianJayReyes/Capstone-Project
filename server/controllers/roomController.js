@@ -497,3 +497,56 @@ export const getAvailableRoomsByType = async (req, res) => {
     });
   }
 };
+
+// NEW: Get all room types for dropdown/filter
+export const adminGetRoomTypes = async (req, res) => {
+  try {
+    const db = await connectDB();
+    
+    const [roomTypes] = await db.query(`
+      SELECT 
+        room_type_id as id,
+        type_name as name,
+        price_per_night,
+        capacity_adults,
+        capacity_children
+      FROM room_types
+      ORDER BY type_name
+    `);
+    
+    res.json({
+      success: true,
+      data: roomTypes
+    });
+    
+  } catch (error) {
+    console.error('Failed to fetch room types:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch room types',
+      error: error.message
+    });
+  }
+};
+
+// Admin: Group rooms by room type
+export const adminGetGroupedRooms = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const [rows] = await db.query(`
+      SELECT rt.type_name, r.room_number
+      FROM room_types rt
+      LEFT JOIN rooms r ON r.room_type_id = rt.room_type_id
+      ORDER BY rt.type_name, r.room_number
+    `);
+    const grouped = {};
+    rows.forEach(row => {
+      if (!grouped[row.type_name]) grouped[row.type_name] = [];
+      if (row.room_number) grouped[row.type_name].push(row.room_number);
+    });
+    res.json(grouped);
+  } catch (err) {
+    console.error("Grouped rooms error:", err);
+    res.status(500).json({ message: "Failed to fetch grouped rooms" });
+  }
+};

@@ -9,7 +9,8 @@ import { createRoom,
   adminAddRoom,
   adminUpdateRoom,
   adminDeleteRoom,
-  getAvailableRoomsByType
+  getAvailableRoomsByType,
+  adminGetGroupedRooms
 } from "../controllers/roomController.js";
 
 const roomRouter = express.Router();
@@ -23,6 +24,7 @@ roomRouter.get("/admin/getRooms", adminGetRooms);
 roomRouter.post("/admin/addRoom", adminAddRoom);
 roomRouter.post("/admin/updateRoom", adminUpdateRoom);
 roomRouter.post("/admin/deleteRoom", adminDeleteRoom);
+roomRouter.get("/admin/grouped", adminGetGroupedRooms)
 
 
 export default roomRouter;

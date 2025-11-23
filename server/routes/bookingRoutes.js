@@ -7,7 +7,8 @@ import {
   getAllBookings,        
   updateBookingStatus,
   getBookingLogs,
-  exportBookingLogs   
+  exportBookingLogs,
+  adminGetCalendarBookings
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
@@ -24,5 +25,6 @@ bookingRouter.get('/admin/all', getAllBookings);
 bookingRouter.post('/admin/update-status', updateBookingStatus);
 bookingRouter.get('/admin/logs', getBookingLogs);
 bookingRouter.get('/admin/logs/export', exportBookingLogs);
+bookingRouter.get('/admin/calendar', adminGetCalendarBookings);
 
 export default bookingRouter;

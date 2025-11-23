@@ -8,7 +8,7 @@ const connectDB = async () => {
   if (!pool) {
     pool = mysql.createPool({
       host: "mysql-rosarioresortshotel.alwaysdata.net",
-      user: "423538",   // e.g. root
+      user: "423538",  
       password: process.env.DB_PASS,
       database: "rosarioresortshotel_db",
       waitForConnections: true,

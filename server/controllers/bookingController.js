@@ -1094,3 +1094,46 @@ export const exportBookingLogs = async (req, res) => {
     }
   }
 };
+
+//Calendar Room matrix
+// GET: Calendar bookings for admin
+export const adminGetCalendarBookings = async (req, res) => {
+  try {
+    const db = await connectDB();
+    
+    const [bookings] = await db.query(`
+      SELECT 
+        b.booking_id as id,
+        b.room_number,
+        b.check_in,
+        b.check_out,
+        b.user_id,
+        b.room_type_id,
+        b.status,
+        b.adults,
+        b.children,
+        b.notes,
+        u.full_name as guest_name,
+        'Direct' as booking_source
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.user_id
+      WHERE b.status IN ('confirmed', 'checked-in', 'pending')
+      ORDER BY b.check_in
+    `);
+    // Transform the data to match what the frontend expects
+    const transformedBookings = bookings.map(booking => ({
+      id: booking.id,
+      room_number: booking.room_number,
+      checkIn: booking.check_in,
+      checkOut: booking.check_out,
+      guest: booking.guest_name || booking.notes || 'Guest',
+      source: booking.booking_source || 'Direct',
+      status: booking.status
+    }));
+
+    res.json(transformedBookings);
+  } catch (err) {
+    console.error("Error fetching calendar bookings:", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};

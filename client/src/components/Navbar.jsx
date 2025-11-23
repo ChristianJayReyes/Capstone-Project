@@ -175,6 +175,15 @@ const Navbar = () => {
                   {/* Menu Items */}
                   <div className="flex flex-col py-2">
                     <button
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        navigate("/update-profile");
+                      }}
+                      className="w-full text-left px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2"
+                    >
+                      <span>✏️</span> Update Profile
+                    </button>
+                    <button
                       onClick={handleLogout}
                       className="w-full text-left px-5 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-all flex items-center gap-2"
                     >
@@ -270,6 +279,15 @@ const Navbar = () => {
                       </p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => {
+                      navigate("/update-profile");
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full py-2 rounded-xl bg-primary/10 text-primary font-medium mb-2"
+                  >
+                    Update Profile
+                  </button>
                   <button
                     onClick={() => {
                       handleLogout();

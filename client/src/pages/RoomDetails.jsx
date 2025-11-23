@@ -253,7 +253,7 @@ const RoomDetails = () => {
       });
 
       if (data.success) {
-        toast.success("Booking confirmed! Check your email for confirmation.");
+        toast.success("Booking request submitted successfully! Please wait for email confirmation.");
         const newBookings = data.bookings || (data.booking ? [data.booking] : []);
         setBookings((prev) => [...newBookings, ...prev]);
         setShowForm(false);

@@ -25,6 +25,7 @@ import EventReservations from './pages/hotelOwner/EventReservations'
 import EventReservationsLogs from './pages/hotelOwner/EventReservationsLogs'
 import ProtectedRoute from './components/ProtectedRoute'
 import RoomMatrix from './pages/hotelOwner/RoomMatrix'
+import UpdateProfile from './pages/UpdateProfile'
 
 
 const App = () => {
@@ -52,6 +53,7 @@ const App = () => {
 
         <Route path='/rooms/:id' element={<RoomDetails/>} />
         <Route path='/my-bookings' element={<MyBookings/>} />
+        <Route path='/update-profile' element={<ProtectedRoute><UpdateProfile/></ProtectedRoute>} />
 
         <Route path='/owner' element={<ProtectedRoute><Layout/></ProtectedRoute>}>
             <Route index element={<Dashboard />} />

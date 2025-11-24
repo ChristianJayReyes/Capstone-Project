@@ -24,10 +24,6 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
       ratePlan: ''
     }],
     totalRoomPrice: 0,
-    gstInclusion: 'Exclusive',
-    bookedBy: 'Direct',
-    agentCommissionAmount: 0,
-    agentCommissionPercentage: 0,
     payments: [{
       id: 1,
       amount: 0,
@@ -163,10 +159,6 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
           guestEmail: data.email || fallbackData.guestEmail,
           staySegments: segments,
           totalRoomPrice: totalPrice || fallbackData.totalPrice,
-          gstInclusion: 'Exclusive',
-          bookedBy: 'Direct',
-          agentCommissionAmount: 0,
-          agentCommissionPercentage: 0,
           payments: [{
             id: 1,
             amount: 0,
@@ -216,10 +208,6 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
             ratePlan: ''
           }],
           totalRoomPrice: fallbackData.totalPrice,
-          gstInclusion: 'Exclusive',
-          bookedBy: 'Direct',
-          agentCommissionAmount: 0,
-          agentCommissionPercentage: 0,
           payments: [{
             id: 1,
             amount: 0,
@@ -253,10 +241,6 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
           ratePlan: ''
         }],
         totalRoomPrice: booking.totalPrice || 0,
-        gstInclusion: 'Exclusive',
-        bookedBy: 'Direct',
-        agentCommissionAmount: 0,
-        agentCommissionPercentage: 0,
         payments: [{
           id: 1,
           amount: 0,
@@ -415,12 +399,13 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
   const calculateTotal = () => {
     const roomPrice = formData.totalRoomPrice || 0;
     const otherChargesTotal = formData.otherCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-    const totalAmount = roomPrice + otherChargesTotal; // No tax
+    const grandTotal = roomPrice + otherChargesTotal; // Grand Total = Room Price + Other Charges
     const paymentsTotal = formData.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const pendingAmount = totalAmount - paymentsTotal;
+    const pendingAmount = grandTotal - paymentsTotal;
 
     return {
-      totalAmount,
+      roomPrice, // Total Room Price (rooms only)
+      grandTotal, // Grand Total (rooms + other charges)
       otherChargesTotal,
       paymentsTotal,
       pendingAmount
@@ -882,13 +867,13 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
             Add Room Move
           </button>
 
-          {/* Financials & Attribution */}
+          {/* Financials */}
           <section className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-blue-100 shadow-sm">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center text-white text-sm font-bold">3</span>
-              Financials & Attribution
+              Financials
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
               <div>
                 <label className="text-sm font-semibold text-gray-700 mb-2 block">Total Room Price (₱)</label>
                 <input
@@ -897,53 +882,8 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
                   onChange={(e) => handleChange('totalRoomPrice', parseFloat(e.target.value) || 0)}
                   className="w-full rounded-lg border-2 border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
+                <p className="text-xs text-gray-500 mt-1">This is the total price for rooms only. Other charges will be added to the Grand Total.</p>
               </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700 mb-2 block">GST Inclusion</label>
-                <select
-                  value={formData.gstInclusion}
-                  onChange={(e) => handleChange('gstInclusion', e.target.value)}
-                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                >
-                  <option value="Exclusive">Exclusive</option>
-                  <option value="Inclusive">Inclusive</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700 mb-2 block">Booked By</label>
-                <select
-                  value={formData.bookedBy}
-                  onChange={(e) => handleChange('bookedBy', e.target.value)}
-                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                >
-                  <option value="Direct">Direct</option>
-                  <option value="TravelAgent">Travel Agent</option>
-                  <option value="Online">Online</option>
-                </select>
-              </div>
-              {formData.bookedBy === 'TravelAgent' && (
-                <>
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Agent Commission Amount (₱)</label>
-                    <input
-                      type="number"
-                      value={formData.agentCommissionAmount}
-                      onChange={(e) => handleChange('agentCommissionAmount', parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Agent Commission Percentage (%)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.agentCommissionPercentage}
-                      onChange={(e) => handleChange('agentCommissionPercentage', parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-lg border-2 border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    />
-                  </div>
-                </>
-              )}
             </div>
           </section>
 
@@ -1148,14 +1088,26 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
           {/* Summary */}
           <section className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <div className="flex justify-between gap-8">
                   <span className="text-gray-700 font-medium">Total Room Price:</span>
-                  <span className="text-gray-900 font-semibold">₱{totals.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="text-gray-900 font-semibold">₱{totals.roomPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
+                {totals.otherChargesTotal > 0 && (
+                  <div className="flex justify-between gap-8">
+                    <span className="text-gray-600 text-sm">Other Charges:</span>
+                    <span className="text-gray-700 text-sm">₱{totals.otherChargesTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
                 <div className="flex justify-between gap-8 pt-2 border-t border-blue-200">
                   <span className="text-gray-900 font-bold text-lg">Grand Total:</span>
-                  <span className="text-blue-600 font-bold text-xl">₱{totals.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="text-blue-600 font-bold text-xl">₱{totals.grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between gap-8 pt-2">
+                  <span className="text-gray-600 text-sm">Pending Amount:</span>
+                  <span className={`text-sm font-semibold ${totals.pendingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    ₱{totals.pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
               <div className="flex flex-col gap-2">

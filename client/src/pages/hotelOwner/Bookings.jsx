@@ -335,27 +335,36 @@ const Bookings = () => {
     try {
       setActionLoading(true);
 
-      const response = await fetch(UPDATE_STATUS_API, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          booking_id: cancelModal.booking.bookingId,
-          action: 'cancel',
-        }),
-      });
+      // For grouped bookings, cancel all booking IDs in the group
+      const bookingIds = cancelModal.booking.bookingIds || [cancelModal.booking.bookingId];
+      
+      // Cancel all bookings in the group
+      const cancelPromises = bookingIds.map(bookingId => 
+        fetch(UPDATE_STATUS_API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            action: 'cancel',
+          }),
+        }).then(res => res.json())
+      );
 
-      const result = await response.json();
-      if (result.success) {
+      const results = await Promise.all(cancelPromises);
+      const allSuccess = results.every(r => r.success);
+      
+      if (allSuccess) {
         setCancelModal({ open: false, booking: null });
         await refetch();
       } else {
-        alert('Cancel failed: ' + (result.message || result.error));
+        const failedResults = results.filter(r => !r.success);
+        alert('Some bookings failed to cancel: ' + failedResults.map(r => r.message || r.error).join(', '));
       }
     } catch (err) {
       console.error('Cancel error', err);
-      alert('An error occurred. Check console.');
+      alert('An error occurred while canceling bookings. Check console.');
     } finally {
       setActionLoading(false);
     }

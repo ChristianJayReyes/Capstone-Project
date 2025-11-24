@@ -24,40 +24,57 @@ export const protect = async (req, res, next) => {
     // Verify JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Check if this is an admin token (from admin-login)
-    // Admin tokens have role: "hotelAdmin" and don't have an id field
-    if (decoded.role === "hotelAdmin") {
-      // Admin user - skip database lookup
+    // Fetch user from DB using decoded id (works for both regular users and database admin users)
+    if (decoded.id) {
+      const db = await connectDB();
+      const [rows] = await db.query("SELECT * FROM users WHERE user_id = ?", [
+        decoded.id,
+      ]);
+
+      if (rows.length === 0) {
+        return res
+          .status(401)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const user = rows[0];
+      
+      // Check if user is admin (from database)
+      if (user.role === "hotelAdmin" || user.role === "admin") {
+        req.user = {
+          ...user,
+          user_id: user.user_id,
+          email: user.email,
+          role: user.role,
+          full_name: user.full_name,
+        };
+        return next();
+      }
+
+      // Regular user
       req.user = {
-        email: decoded.email,
-        role: decoded.role,
-        full_name: decoded.name || "Admin",
-        user_id: null, // Admin doesn't have a user_id in the users table
+        ...user,
+        user_id: decoded.id,
+        email: decoded.email || decoded.user_email || user.email,
       };
       return next();
     }
 
-    // Regular user token - must have id field
-    if (!decoded.id) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid token format" });
+    // Legacy admin token (without id) - for backward compatibility
+    if (decoded.role === "hotelAdmin" || decoded.role === "admin") {
+      req.user = {
+        email: decoded.email,
+        role: decoded.role,
+        full_name: decoded.name || "Admin",
+        user_id: null,
+      };
+      return next();
     }
 
-    // Fetch user from DB using decoded id
-    const db = await connectDB();
-    const [rows] = await db.query("SELECT * FROM users WHERE user_id = ?", [
-      decoded.id,
-    ]);
-
-    if (rows.length === 0) {
-      return res
-        .status(401)
-        .json({ success: false, message: "User not found" });
-    }
-
-    req.user = {...rows[0], user_id: decoded.id, email: decoded.email || decoded.user_email,}; 
-    next();
+    // Invalid token format
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid token format" });
   } catch (err) {
     console.error("JWT Error:", err);
     return res

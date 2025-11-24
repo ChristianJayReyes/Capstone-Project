@@ -192,24 +192,74 @@ router.get(
   }
 );
 
-// Admin login route
-router.post("/admin-login", (req, res) => {
+// Admin login route - now checks database
+router.post("/admin-login", async (req, res) => {
   const { email, password } = req.body;
 
-  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+  try {
+    const db = await connectDB();
+    
+    // Find user with admin role
+    const [rows] = await db.query(
+      "SELECT * FROM users WHERE email = ? AND role IN ('hotelAdmin', 'admin')",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid credentials or not an admin user" 
+      });
+    }
+
+    const user = rows[0];
+
+    // Verify password
+    if (!user.password) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Admin account not properly configured" 
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid credentials" 
+      });
+    }
+
+    // Generate JWT token with user_id for database admin users
     const token = jwt.sign(
-      { email, role: "hotelAdmin", name: "Admin" },
+      { 
+        id: user.user_id,  // Include user_id for database admin users
+        email: user.email, 
+        role: user.role,
+        name: user.full_name 
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "24h" }  // Longer expiration for admin
     );
 
     return res.json({
-      success:true,
+      success: true,
       token,
-      user: { email, role: "hotelAdmin", name: "Admin"},
+      user: { 
+        user_id: user.user_id,
+        email: user.email, 
+        role: user.role, 
+        full_name: user.full_name,
+        name: user.full_name
+      },
     });
-  } else {
-    return res.status(401).json({ success: false, message: "Invalid credentials"});
+  } catch (error) {
+    console.error("Admin login error:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error during login" 
+    });
   }
 });
 

@@ -28,8 +28,11 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       return;
     }
     
+    // Get token from context or localStorage as fallback
+    const authToken = token || localStorage.getItem("token");
+    
     // Check if token is available
-    if (!token) {
+    if (!authToken) {
       console.error('No authentication token found');
       setBookingGroup({ error: 'Authentication required. Please log in again.' });
       setFetching(false);
@@ -39,6 +42,13 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
     // Debug: Log the booking object
     console.log('Fetching booking group for:', booking);
     console.log('Booking ID:', booking.bookingId || booking.booking_id || booking.id);
+    console.log('Token available:', !!authToken);
+    console.log('Token from context:', !!token);
+    console.log('Token from localStorage:', !!localStorage.getItem("token"));
+    if (authToken) {
+      console.log('Token length:', authToken.length);
+      console.log('Token preview:', authToken.substring(0, 20) + '...');
+    }
     
     setFetching(true);
     try {
@@ -58,12 +68,8 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       
       const headers = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
       };
-      
-      // Add authorization token if available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       
       const response = await fetch(url, {
         headers,
@@ -107,13 +113,16 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
 
   const fetchAvailableRooms = async (bookingItem) => {
     try {
+      // Get token from context or localStorage as fallback
+      const authToken = token || localStorage.getItem("token");
+      
       const headers = {
         'Content-Type': 'application/json',
       };
       
-      // Add authorization token if available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      // Add authorization token
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
       }
       
       const response = await fetch(
@@ -157,14 +166,13 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       const bookingIds = bookingGroup.bookings.map((b) => b.booking_id);
       const roomNumbers = bookingIds.map((id) => roomAssignments[id]);
 
+      // Get token from context or localStorage as fallback
+      const authToken = token || localStorage.getItem("token");
+      
       const headers = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
       };
-      
-      // Add authorization token if available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       
       const assignResponse = await fetch(
         'https://rrh-backend.vercel.app/api/bookings/admin/assign-rooms',
@@ -186,12 +194,16 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       }
 
       // Confirm booking (update status to Arrival)
+      // Get token from context or localStorage as fallback
+      const confirmAuthToken = token || localStorage.getItem("token");
+      
       const confirmResponse = await fetch(
         'https://rrh-backend.vercel.app/api/bookings/admin/update-status',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${confirmAuthToken}`,
           },
           body: JSON.stringify({
             booking_id: booking.bookingId,

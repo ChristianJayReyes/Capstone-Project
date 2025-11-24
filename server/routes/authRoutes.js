@@ -113,27 +113,34 @@ router.post("/login", async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
     }
 
-    // Generate JWT token for direct login (no OTP required)
-    const token = jwt.sign(
-      { id: user.user_id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    await db.query(
+      "UPDATE users SET otp = ?, otp_expires = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE) WHERE user_id = ?",
+      [otp, user.user_id]
     );
 
-    // Return user data and token for immediate login
+    // Send OTP email
+    try {
+      await transporter.sendMail({
+        from: `"Rosario Resorts" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "Your Login Verification Code",
+        html: `<p>Use the following code to verify your login:</p>
+               <h2>${otp}</h2>
+               <p>This code will expire in 5 minutes.</p>`,
+      });
+    } catch (emailErr) {
+      console.error("Error sending OTP email:", emailErr);
+      // Still return success so user can try again, but log the error
+    }
+
+    // Return user_id so frontend can use it for OTP verification
     res.json({
       success: true,
-      message: "Login successful",
-      token,
-      user: {
-        user_id: user.user_id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role || 'user',
-        phone: user.phone,
-        address: user.address,
-        photo: user.photo
-      },
+      message: "OTP sent to your email",
+      user_id: user.user_id,
+      email: user.email,
     });
   } catch (err) {
     console.error("Login error:", err);

@@ -164,17 +164,15 @@ const LoginForm = () => {
       const userData = await userRes.json();
       
       if (userData.success) {
-        // Direct login successful - no OTP needed
-        loginUser(userData.user, userData.token);
-        setShowForm(false);
+        // OTP sent - move to OTP verification step
+        setUserId(userData.user_id);
+        setStep(2); // OTP step
         Swal.fire({
-          icon: "success",
-          title: "Login Successful!",
-          text: "Welcome back!",
-          timer: 2000,
+          icon: "info",
+          title: "OTP Sent!",
+          text: "Please check your email for the verification code",
+          timer: 3000,
           showConfirmButton: false,
-        }).then(() => {
-          navigate("/");
         });
       } else {
         setError(userData.message || "Login failed"); 
@@ -211,6 +209,7 @@ const LoginForm = () => {
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
+          // Redirect to home page for regular users
           navigate("/");
         });
       } else setError(data.message);

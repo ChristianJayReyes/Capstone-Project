@@ -1074,15 +1074,33 @@ export const adminGetCalendarBookings = async (req, res) => {
       ORDER BY b.check_in
     `);
     // Transform the data to match what the frontend expects
-    const transformedBookings = bookings.map(booking => ({
-      id: booking.id,
-      room_number: booking.room_number,
-      checkIn: booking.check_in,
-      checkOut: booking.check_out,
-      guest: booking.guest_name || booking.notes || 'Guest',
-      source: booking.booking_source || 'Direct',
-      status: booking.status
-    }));
+    const transformedBookings = bookings.map(booking => {
+      // Ensure dates are in YYYY-MM-DD format
+      const formatDate = (dateStr) => {
+        if (!dateStr) return null;
+        // If already in YYYY-MM-DD format, return as is
+        if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          return dateStr;
+        }
+        // If it's a Date object or other format, convert it
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return null;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      return {
+        id: booking.id,
+        room_number: String(booking.room_number || '').trim(),
+        checkIn: formatDate(booking.check_in),
+        checkOut: formatDate(booking.check_out),
+        guest: booking.guest_name || booking.notes || 'Guest',
+        source: booking.booking_source || 'Direct',
+        status: booking.status
+      };
+    }).filter(booking => booking.checkIn && booking.checkOut && booking.room_number); // Filter out invalid bookings
 
     res.json(transformedBookings);
   } catch (err) {

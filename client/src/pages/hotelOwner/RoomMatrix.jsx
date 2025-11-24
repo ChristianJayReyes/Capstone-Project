@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Download, Menu, CirclePlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Menu, CirclePlus, RefreshCw } from "lucide-react";
 
 const API_ROOT = "https://rrh-backend.vercel.app/api";
 
@@ -48,53 +48,61 @@ export default function RoomMatrix() {
     setDates(generateDateRange(currentYear, currentMonth));
   }, [currentYear, currentMonth]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
+      const [groupRes, bookingRes] = await Promise.all([
+        fetch(`${API_ROOT}/rooms/admin/grouped`).then(r => {
+          if (!r.ok) throw new Error('Failed to fetch rooms');
+          return r.json();
+        }),
+        fetch(`${API_ROOT}/bookings/admin/calendar`).then(r => {
+          if (!r.ok) throw new Error('Failed to fetch bookings');
+          return r.json();
+        })
+      ]);
 
-        const [groupRes, bookingRes] = await Promise.all([
-          fetch(`${API_ROOT}/rooms/admin/grouped`).then(r => {
-            if (!r.ok) throw new Error('Failed to fetch rooms');
-            return r.json();
-          }),
-          fetch(`${API_ROOT}/bookings/admin/calendar`).then(r => {
-            if (!r.ok) throw new Error('Failed to fetch bookings');
-            return r.json();
-          })
-        ]);
+      const groupedData = groupRes.grouped || groupRes.data || groupRes;
+      setGrouped(groupedData);
 
-        if (cancelled) return;
+      const ordered = Object.keys(groupedData);
+      setOrder(ordered);
 
-        const groupedData = groupRes.grouped || groupRes.data || groupRes;
-        setGrouped(groupedData);
+      const initCollapsed = {};
+      ordered.forEach((t) => (initCollapsed[t] = true));
+      setCollapsed(initCollapsed);
 
-        const ordered = Object.keys(groupedData);
-        setOrder(ordered);
+      const bookingsArray = Array.isArray(bookingRes) ? bookingRes : (bookingRes.bookings || []);
+      console.log('Loaded bookings for matrix:', bookingsArray.length, bookingsArray);
+      setBookings(bookingsArray);
 
-        const initCollapsed = {};
-        ordered.forEach((t) => (initCollapsed[t] = true));
-        setCollapsed(initCollapsed);
-
-        const bookingsArray = Array.isArray(bookingRes) ? bookingRes : (bookingRes.bookings || []);
-        setBookings(bookingsArray);
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Failed to load calendar data:", err);
-        setError(err.message);
-        setLoading(false);
-      }
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to load calendar data:", err);
+      setError(err.message);
+      setLoading(false);
     }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadData();
+
+    // Refresh when window gains focus (user might have confirmed bookings in another tab)
+    const handleFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Refresh every 30 seconds to catch any updates
+    const interval = setInterval(loadData, 30000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
+  }, [loadData]);
 
   const availabilityByType = useMemo(() => {
     const availability = {};
@@ -110,9 +118,12 @@ export default function RoomMatrix() {
         bookings.forEach((booking) => {
           const checkIn = booking.checkIn || booking.check_in;
           const checkOut = booking.checkOut || booking.check_out;
-          const roomNum = booking.room_number;
+          const roomNum = String(booking.room_number || '').trim();
 
-          if (rooms.includes(roomNum) &&
+          // Convert room numbers to strings for comparison
+          const roomStrings = rooms.map(r => String(r).trim());
+          
+          if (roomStrings.includes(roomNum) &&
               checkIn && checkOut &&
               date >= checkIn &&
               date < checkOut) {
@@ -145,7 +156,9 @@ export default function RoomMatrix() {
   const bookingsByRoom = useMemo(() => {
     const map = {};
     bookings.forEach(b => {
-      const room = String(b.room_number);
+      const room = String(b.room_number || '').trim();
+      if (!room) return; // Skip bookings without room numbers
+      
       if (!map[room]) {
         map[room] = [];
       }
@@ -155,15 +168,18 @@ export default function RoomMatrix() {
       const guest = b.guest_name || b.guest || b.notes || "Guest";
       const source = b.source || b.booking_source || "Direct";
 
-      map[room].push({
-        id: b.id || b.booking_id,
-        room_number: b.room_number,
-        checkIn: checkIn,
-        checkOut: checkOut,
-        guest: guest,
-        source: source,
-        status: b.status
-      });
+      // Only add if we have valid dates
+      if (checkIn && checkOut) {
+        map[room].push({
+          id: b.id || b.booking_id,
+          room_number: room,
+          checkIn: checkIn,
+          checkOut: checkOut,
+          guest: guest,
+          source: source,
+          status: b.status
+        });
+      }
     });
 
     return map;
@@ -325,16 +341,6 @@ export default function RoomMatrix() {
           <h2 className="text-2xl font-semibold mb-4 text-white-900">Room Matrix</h2>
 
           <div className="flex gap-3 flex-wrap">
-            <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors text-sm">
-              <CirclePlus className="w-4 h-4" />
-              New Booking
-            </button>
-            <button className="flex items-center gap-2 bg-gray-700 text-gray-100 px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors text-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-              </svg>
-              Block/Unblock
-            </button>
             <button 
               onClick={switchToMatrix}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
@@ -384,6 +390,14 @@ export default function RoomMatrix() {
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <button 
+                onClick={loadData}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-800 rounded-lg transition-colors text-sm"
+                title="Refresh bookings"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
               <button className="flex items-center gap-2 px-3 py-2 hover:bg-gray-800 rounded-lg transition-colors text-sm">
                 <Download className="w-4 h-4" />
                 Download PDF

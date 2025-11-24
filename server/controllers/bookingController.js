@@ -307,6 +307,7 @@ export const getHotelBookings = async (req, res) => {
       FROM bookings b
       JOIN rooms r ON b.room_type_id = r.room_type_id
       JOIN room_types rt ON r.room_type_id = rt.room_type_id
+      WHERE b.status != 'Cancelled'
       ORDER BY b.booking_id DESC;
     `);
 
@@ -384,6 +385,7 @@ export const getAllBookings = async (req, res) => {
       FROM bookings b
       JOIN users u ON b.user_id = u.user_id
       JOIN room_types rt ON b.room_type_id = rt.room_type_id
+      WHERE b.status != 'Cancelled'
       ORDER BY b.created_at DESC
     `;
 
@@ -539,6 +541,26 @@ export const updateBookingStatus = async (req, res) => {
     } else if (actionLower === "cancel") {
       newStatus = "Cancelled";
       newPaymentStatus = currentPaymentStatus;
+      
+      // If booking has a room assigned, set room status back to "Available"
+      if (currentBooking.room_number) {
+        try {
+          const [roomResult] = await connection.query(
+            `SELECT room_id FROM rooms WHERE room_number = ?`,
+            [currentBooking.room_number]
+          );
+          if (roomResult.length > 0) {
+            await connection.query(
+              `UPDATE rooms SET status = 'Available' WHERE room_id = ?`,
+              [roomResult[0].room_id]
+            );
+            console.log(`✅ Room ${currentBooking.room_number} set back to Available after cancellation`);
+          }
+        } catch (roomError) {
+          console.error("Error updating room status on cancellation:", roomError);
+          // Don't fail the cancellation if room update fails
+        }
+      }
     } else {
       await connection.rollback();
       return res.status(400).json({

@@ -7,6 +7,7 @@ import nodemailer from "nodemailer";
 import passport from "passport";
 import fetch from "node-fetch";
 import crypto from "crypto";
+import { sendEmail } from "../utils/sendEmail.js";
 
 const router = express.Router();
 
@@ -113,6 +114,15 @@ router.post("/login", async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
     }
 
+    // Check if email credentials are configured
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error("Email credentials not configured");
+      return res.status(500).json({
+        success: false,
+        message: "Email service not configured. Please contact support.",
+      });
+    }
+
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000);
     await db.query(
@@ -120,19 +130,21 @@ router.post("/login", async (req, res) => {
       [otp, user.user_id]
     );
 
-    // Send OTP email
+    // Send OTP email using the utility function
     try {
-      await transporter.sendMail({
-        from: `"Rosario Resorts" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: "Your Login Verification Code",
-        html: `<p>Use the following code to verify your login:</p>
-               <h2>${otp}</h2>
-               <p>This code will expire in 5 minutes.</p>`,
-      });
+      await sendEmail(email, otp);
+      console.log(`OTP sent successfully to ${email}`);
     } catch (emailErr) {
       console.error("Error sending OTP email:", emailErr);
-      // Still return success so user can try again, but log the error
+      // Clear the OTP from database if email fails
+      await db.query(
+        "UPDATE users SET otp = NULL, otp_expires = NULL WHERE user_id = ?",
+        [user.user_id]
+      );
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email. Please try again later.",
+      });
     }
 
     // Return user_id so frontend can use it for OTP verification

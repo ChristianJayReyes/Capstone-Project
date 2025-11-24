@@ -260,31 +260,59 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
         return;
       }
 
-      // Confirm booking (update status to Arrival)
+      // Confirm ALL bookings in the group (update status to Arrival)
       // Get token from context or localStorage as fallback
       const confirmAuthToken = token || localStorage.getItem("token");
       
-      const confirmResponse = await fetch(
-        'https://rrh-backend.vercel.app/api/bookings/admin/update-status',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${confirmAuthToken}`,
-          },
-          body: JSON.stringify({
-            booking_id: booking.bookingId,
-            action: 'confirm',
-          }),
-        }
+      // Confirm all bookings in parallel
+      const confirmPromises = bookingIds.map(bookingId =>
+        fetch(
+          'https://rrh-backend.vercel.app/api/bookings/admin/update-status',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${confirmAuthToken}`,
+            },
+            body: JSON.stringify({
+              booking_id: bookingId,
+              action: 'confirm',
+            }),
+          }
+        ).then(res => res.json())
       );
 
-      const confirmData = await confirmResponse.json();
-      if (confirmData.success) {
+      const confirmResults = await Promise.all(confirmPromises);
+      const allConfirmed = confirmResults.every(result => result.success);
+      
+      if (allConfirmed) {
+        // Send confirmation email with all booking details
+        // Use the first booking ID to trigger email (backend will collect all related bookings)
+        const emailResponse = await fetch(
+          'https://rrh-backend.vercel.app/api/bookings/admin/send-confirmation-email',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${confirmAuthToken}`,
+            },
+            body: JSON.stringify({
+              booking_id: bookingIds[0], // Use first booking ID to identify the group
+            }),
+          }
+        );
+        
+        const emailData = await emailResponse.json();
+        if (!emailData.success) {
+          console.warn('Failed to send confirmation email:', emailData.message);
+          // Don't fail the confirmation if email fails
+        }
+        
         onConfirm();
         onClose();
       } else {
-        alert(`Failed to confirm booking: ${confirmData.message}`);
+        const failedResults = confirmResults.filter(r => !r.success);
+        alert(`Failed to confirm some bookings: ${failedResults.map(r => r.message).join(', ')}`);
       }
     } catch (error) {
       console.error('Error confirming booking:', error);

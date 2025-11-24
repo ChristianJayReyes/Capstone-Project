@@ -747,30 +747,9 @@ export const updateBookingStatus = async (req, res) => {
 
     await connection.commit();
 
-    // Send confirmation email when admin confirms the booking (status changes to "Arrival")
-    if (actionLower === "confirm" && newStatus === "Arrival" && email) {
-      try {
-        const reservationDetails = {
-          bookingId: booking_id,
-          checkInDate: currentBooking.check_in,
-          checkOutDate: currentBooking.check_out,
-          roomId: currentBooking.room_type_id,
-          roomName: currentBooking.room_type || "Unknown Room",
-          totalPrice: currentBooking.total_price || 0,
-          guests: {
-            adults: currentBooking.adults || 0,
-            children: currentBooking.children || 0,
-          },
-          roomsBooked: [], // Don't include room numbers in confirmation email
-        };
-
-        await sendReservationEmail(email, reservationDetails);
-        console.log(`✅ Confirmation email sent to ${email} for booking ${booking_id}`);
-      } catch (emailError) {
-        console.error("❌ Error sending confirmation email:", emailError);
-        // Don't fail the request if email fails
-      }
-    }
+    // Note: Confirmation email is now sent separately via /admin/send-confirmation-email endpoint
+    // after all bookings in a group are confirmed. This prevents duplicate emails and allows
+    // sending one comprehensive email with all room details.
 
     res.status(200).json({
       success: true,
@@ -1110,6 +1089,145 @@ export const adminGetCalendarBookings = async (req, res) => {
 };
 
 // GET: Get all bookings for a specific booking group (by user email and dates)
+// POST: Send confirmation email for a booking group
+export const sendConfirmationEmail = async (req, res) => {
+  let connection;
+  try {
+    const { booking_id } = req.body;
+
+    if (!booking_id) {
+      return res.status(400).json({
+        success: false,
+        message: "booking_id is required",
+      });
+    }
+
+    const pool = await connectDB();
+    connection = await pool.getConnection();
+
+    // Get the primary booking to find related bookings
+    const [primaryBooking] = await connection.query(
+      `SELECT b.*, u.email, u.full_name, u.phone, rt.type_name AS room_type
+       FROM bookings b
+       JOIN users u ON b.user_id = u.user_id
+       JOIN room_types rt ON b.room_type_id = rt.room_type_id
+       WHERE b.booking_id = ? AND b.status = 'Arrival'`,
+      [booking_id]
+    );
+
+    if (primaryBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Confirmed booking not found",
+      });
+    }
+
+    const primary = primaryBooking[0];
+
+    // Find all confirmed bookings with same email and check-in/check-out dates
+    const [relatedBookings] = await connection.query(
+      `SELECT b.*, rt.type_name AS room_type
+       FROM bookings b
+       JOIN room_types rt ON b.room_type_id = rt.room_type_id
+       JOIN users u ON b.user_id = u.user_id
+       WHERE u.email = ? 
+       AND b.check_in = ? 
+       AND b.check_out = ?
+       AND b.status = 'Arrival'
+       ORDER BY b.booking_id`,
+      [primary.email, primary.check_in, primary.check_out]
+    );
+
+    if (relatedBookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No confirmed bookings found",
+      });
+    }
+
+    // Group bookings by room type and collect room numbers
+    const roomDetails = [];
+    const roomTypeMap = {};
+    
+    relatedBookings.forEach((booking) => {
+      const roomType = booking.room_type || 'Unknown';
+      if (!roomTypeMap[roomType]) {
+        roomTypeMap[roomType] = [];
+      }
+      if (booking.room_number && booking.room_number !== '—' && booking.room_number !== '') {
+        roomTypeMap[roomType].push(booking.room_number);
+      }
+    });
+
+    // Build room details string
+    Object.keys(roomTypeMap).forEach((roomType) => {
+      const roomNumbers = roomTypeMap[roomType];
+      if (roomNumbers.length > 0) {
+        roomDetails.push({
+          type: roomType,
+          rooms: roomNumbers,
+          count: roomNumbers.length
+        });
+      }
+    });
+
+    // Calculate total price
+    const totalPrice = relatedBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
+
+    // Get guest count from first booking
+    const firstBooking = relatedBookings[0];
+    const guestsMatch = firstBooking.guests?.match(/Adult (\d+).*Child (\d+)/);
+    const adults = guestsMatch ? parseInt(guestsMatch[1]) : 0;
+    const children = guestsMatch ? parseInt(guestsMatch[2]) : 0;
+
+    // Build reservation details for email
+    const reservationDetails = {
+      bookingId: primary.booking_id,
+      checkInDate: primary.check_in,
+      checkOutDate: primary.check_out,
+      roomName: roomDetails.length > 0 
+        ? roomDetails.map(rd => `${rd.count}x ${rd.type}`).join(', ')
+        : 'Multiple Rooms',
+      roomsBooked: roomDetails.flatMap(rd => rd.rooms),
+      roomDetails: roomDetails, // Include detailed room info
+      totalPrice: totalPrice,
+      guests: {
+        adults: adults,
+        children: children,
+      },
+    };
+
+    // Send confirmation email
+    try {
+      await sendReservationEmail(primary.email, reservationDetails);
+      console.log(`✅ Confirmation email sent to ${primary.email} for booking group starting with ${booking_id}`);
+      
+      res.json({
+        success: true,
+        message: "Confirmation email sent successfully",
+      });
+    } catch (emailError) {
+      console.error("❌ Error sending confirmation email:", emailError);
+      res.status(500).json({
+        success: false,
+        message: "Failed to send confirmation email",
+        error: emailError.message,
+      });
+    }
+  } catch (error) {
+    console.error("Error sending confirmation email:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send confirmation email",
+      error: error.message,
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+};
+
 export const getBookingGroup = async (req, res) => {
   try {
     const db = await connectDB();

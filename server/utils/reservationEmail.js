@@ -40,6 +40,19 @@ export const sendReservationEmail = async (to, reservationDetails, isReminder = 
             <p style="font-size: 16px; color: #555;">${introMessage}</p>
     
             <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+              ${reservationDetails.roomDetails && reservationDetails.roomDetails.length > 0 ? `
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;"><strong>Room(s):</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                  ${reservationDetails.roomDetails.map(rd => 
+                    `<div style="margin-bottom: 8px;">
+                      <strong>${rd.count}x ${rd.type}</strong>
+                      ${rd.rooms.length > 0 ? `<br/><span style="color: #666; font-size: 14px;">Room ${rd.rooms.join(', ')}</span>` : ''}
+                    </div>`
+                  ).join('')}
+                </td>
+              </tr>
+              ` : `
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Room Type:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.roomName || reservationDetails.roomId}</td>
@@ -50,14 +63,11 @@ export const sendReservationEmail = async (to, reservationDetails, isReminder = 
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.roomsBooked.join(', ')}</td>
               </tr>
               ` : ''}
+              `}
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Check-In:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.checkInDate}</td>
-
-              </tr> 
-
               </tr>
-
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Check-Out:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.checkOutDate}</td>
@@ -68,7 +78,7 @@ export const sendReservationEmail = async (to, reservationDetails, isReminder = 
               </tr>
               <tr>
                 <td style="padding: 10px;"><strong>Total Price:</strong></td>
-                <td style="padding: 10px;">₱${reservationDetails.totalPrice}</td>
+                <td style="padding: 10px;">₱${Number(reservationDetails.totalPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </table>
     

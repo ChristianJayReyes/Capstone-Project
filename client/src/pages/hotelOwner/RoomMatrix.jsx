@@ -116,17 +116,31 @@ export default function RoomMatrix() {
         const bookedRooms = new Set();
 
         bookings.forEach((booking) => {
-          const checkIn = booking.checkIn || booking.check_in;
-          const checkOut = booking.checkOut || booking.check_out;
+          // Normalize dates to YYYY-MM-DD format
+          const normalizeDate = (dateStr) => {
+            if (!dateStr) return null;
+            if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              return dateStr;
+            }
+            const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+              return `${match[1]}-${match[2]}-${match[3]}`;
+            }
+            return dateStr;
+          };
+
+          const checkIn = normalizeDate(booking.checkIn || booking.check_in);
+          const checkOut = normalizeDate(booking.checkOut || booking.check_out);
           const roomNum = String(booking.room_number || '').trim();
 
           // Convert room numbers to strings for comparison
           const roomStrings = rooms.map(r => String(r).trim());
           
+          // Booking is active if date is >= checkIn and <= checkOut (inclusive of check-out date)
           if (roomStrings.includes(roomNum) &&
               checkIn && checkOut &&
               date >= checkIn &&
-              date < checkOut) {
+              date <= checkOut) {
             bookedRooms.add(roomNum);
           }
         });
@@ -213,8 +227,31 @@ export default function RoomMatrix() {
       return null;
     }
 
-    const startIdx = dateIndex(booking.checkIn);
-    const endIdx = dateIndex(booking.checkOut);
+    // Normalize dates to YYYY-MM-DD format for comparison
+    const normalizeDate = (dateStr) => {
+      if (!dateStr) return null;
+      // If already in YYYY-MM-DD format, return as is
+      if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateStr;
+      }
+      // Parse date string and extract YYYY-MM-DD
+      const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        return `${match[1]}-${match[2]}-${match[3]}`;
+      }
+      return dateStr;
+    };
+
+    const checkInDate = normalizeDate(booking.checkIn);
+    const checkOutDate = normalizeDate(booking.checkOut);
+
+    if (!checkInDate || !checkOutDate) return null;
+
+    const startIdx = dateIndex(checkInDate);
+    // For check-out, we want to show the booking until the end of the check-out date
+    // So we find the index of check-out date and add 1 to include that day
+    const checkOutIdx = dateIndex(checkOutDate);
+    const endIdx = checkOutIdx >= 0 ? checkOutIdx + 1 : checkOutIdx;
 
     if (startIdx === -1 && endIdx === -1) return null;
 

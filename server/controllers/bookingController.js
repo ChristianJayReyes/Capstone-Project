@@ -1104,9 +1104,23 @@ export const adminGetCalendarBookings = async (req, res) => {
         if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
           return dateStr;
         }
-        // If it's a Date object or other format, convert it
+        // If it's a Date object or other format, parse it carefully to avoid timezone issues
+        if (typeof dateStr === 'string') {
+          // Try to parse as YYYY-MM-DD first (most common format from MySQL)
+          const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (dateMatch) {
+            return `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+          }
+          // If it has time component, extract just the date part
+          const dateTimeMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (dateTimeMatch) {
+            return `${dateTimeMatch[1]}-${dateTimeMatch[2]}-${dateTimeMatch[3]}`;
+          }
+        }
+        // Fallback: parse as Date but use local date components to avoid timezone shift
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) return null;
+        // Use local date components to avoid timezone conversion issues
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -1169,7 +1183,7 @@ export const sendConfirmationEmail = async (req, res) => {
 
     // Find all confirmed bookings with same email and check-in/check-out dates
     const [relatedBookings] = await connection.query(
-      `SELECT b.*, rt.type_name AS room_type
+      `SELECT b.*, rt.type_name AS room_type, b.adults, b.children
        FROM bookings b
        JOIN room_types rt ON b.room_type_id = rt.room_type_id
        JOIN users u ON b.user_id = u.user_id
@@ -1217,17 +1231,40 @@ export const sendConfirmationEmail = async (req, res) => {
     // Calculate total price
     const totalPrice = relatedBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
 
-    // Get guest count from first booking
-    const firstBooking = relatedBookings[0];
-    const guestsMatch = firstBooking.guests?.match(/Adult (\d+).*Child (\d+)/);
-    const adults = guestsMatch ? parseInt(guestsMatch[1]) : 0;
-    const children = guestsMatch ? parseInt(guestsMatch[2]) : 0;
+    // Get guest count - sum up adults and children from all bookings in the group
+    const totalAdults = relatedBookings.reduce((sum, b) => sum + (Number(b.adults) || 0), 0);
+    const totalChildren = relatedBookings.reduce((sum, b) => sum + (Number(b.children) || 0), 0);
+
+    // Format dates to remove time and timezone (YYYY-MM-DD format)
+    const formatDateForEmail = (dateStr) => {
+      if (!dateStr) return '';
+      // If it's already a date string in YYYY-MM-DD format, return as is
+      if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateStr;
+      }
+      // If it's a Date object or has time component, extract just the date part
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Format dates nicely for display (e.g., "Nov 24, 2025")
+    const formatDateDisplay = (dateStr) => {
+      const dateOnly = formatDateForEmail(dateStr);
+      if (!dateOnly) return dateStr;
+      const date = new Date(dateOnly + 'T00:00:00'); // Add time to avoid timezone issues
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    };
 
     // Build reservation details for email
     const reservationDetails = {
       bookingId: primary.booking_id,
-      checkInDate: primary.check_in,
-      checkOutDate: primary.check_out,
+      checkInDate: formatDateDisplay(primary.check_in),
+      checkOutDate: formatDateDisplay(primary.check_out),
       roomName: roomDetails.length > 0 
         ? roomDetails.map(rd => `${rd.count}x ${rd.type}`).join(', ')
         : 'Multiple Rooms',
@@ -1235,8 +1272,8 @@ export const sendConfirmationEmail = async (req, res) => {
       roomDetails: roomDetails, // Include detailed room info
       totalPrice: totalPrice,
       guests: {
-        adults: adults,
-        children: children,
+        adults: totalAdults,
+        children: totalChildren,
       },
     };
 

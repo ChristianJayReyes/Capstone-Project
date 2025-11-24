@@ -133,17 +133,32 @@ router.post("/login", async (req, res) => {
     // Send OTP email using the utility function
     try {
       await sendEmail(email, otp);
-      console.log(`OTP sent successfully to ${email}`);
+      console.log(`✅ OTP email sent successfully to ${email}`);
     } catch (emailErr) {
-      console.error("Error sending OTP email:", emailErr);
+      console.error("❌ Error sending OTP email:", emailErr);
+      console.error("Error stack:", emailErr.stack);
+      console.error("Error details:", {
+        message: emailErr.message,
+        code: emailErr.code,
+        response: emailErr.response,
+        command: emailErr.command,
+      });
+      
       // Clear the OTP from database if email fails
-      await db.query(
-        "UPDATE users SET otp = NULL, otp_expires = NULL WHERE user_id = ?",
-        [user.user_id]
-      );
+      try {
+        await db.query(
+          "UPDATE users SET otp = NULL, otp_expires = NULL WHERE user_id = ?",
+          [user.user_id]
+        );
+      } catch (dbErr) {
+        console.error("Error clearing OTP from database:", dbErr);
+      }
+      
+      // Return more specific error message
+      const errorMessage = emailErr.message || "Failed to send OTP email. Please try again later.";
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP email. Please try again later.",
+        message: errorMessage,
       });
     }
 

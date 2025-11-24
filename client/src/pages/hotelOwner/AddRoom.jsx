@@ -25,7 +25,8 @@ export default function AddRoom() {
   const fetchRoomTypes = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/admin/getRoomTypes`);
-      const data = res.data?.data ?? [];
+      const data = res.data?.data ?? res.data ?? [];
+      console.log("Fetched room types:", data);
       setRoomTypesList(data);
     } catch (e) {
       console.error("Failed to fetch room types:", e);
@@ -420,9 +421,15 @@ export default function AddRoom() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
               >
                 <option value="all">All Room Types</option>
-                {roomTypesList.map((t) => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
+                {roomTypesList && roomTypesList.length > 0 ? (
+                  roomTypesList.map((t) => (
+                    <option key={t.id || t.room_type_id} value={t.name || t.type_name}>
+                      {t.name || t.type_name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>Loading room types...</option>
+                )}
               </select>
             </div>
 

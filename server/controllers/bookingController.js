@@ -1434,19 +1434,22 @@ export const getBookingGroup = async (req, res) => {
     const primary = primaryBooking[0];
 
     // Find all bookings with same email, check-in, and check-out (regardless of room type)
-    // Include all statuses (Pending, Arrival, Check-in) to get the full booking group
+    // Include all active statuses to get the full booking group (for editing, we need all bookings)
     const [relatedBookings] = await db.query(
-      `SELECT b.*, rt.type_name AS room_type, rt.room_type_id
+      `SELECT b.*, rt.type_name AS room_type, rt.room_type_id, b.adults, b.children, b.room_number
        FROM bookings b
        JOIN room_types rt ON b.room_type_id = rt.room_type_id
        JOIN users u ON b.user_id = u.user_id
        WHERE u.email = ? 
        AND b.check_in = ? 
        AND b.check_out = ?
-       AND b.status IN ('Pending', 'Arrival', 'Check-in')
+       AND b.status NOT IN ('Cancelled', 'Check-out')
        ORDER BY rt.type_name, b.booking_id`,
       [primary.email, primary.check_in, primary.check_out]
     );
+
+    console.log(`Found ${relatedBookings.length} related bookings for email ${primary.email}, dates ${primary.check_in} to ${primary.check_out}`);
+    console.log('Room types found:', relatedBookings.map(b => b.room_type));
 
     // Calculate total price from all related bookings
     const totalPrice = relatedBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);

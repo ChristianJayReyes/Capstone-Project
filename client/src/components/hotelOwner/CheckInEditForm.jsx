@@ -104,7 +104,10 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
       );
       const data = await response.json();
 
-      if (data.success && data.bookings.length > 0) {
+      console.log('Booking group data received:', data);
+      console.log('Number of bookings:', data.bookings?.length || 0);
+
+      if (data.success && data.bookings && data.bookings.length > 0) {
         const firstBooking = data.bookings[0];
         
         // Group bookings by check-in/check-out dates to create segments
@@ -125,18 +128,29 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
           // Group bookings by room type within segment
           const roomTypeMap = {};
           seg.bookings.forEach((b) => {
-            if (!roomTypeMap[b.room_type]) {
-              roomTypeMap[b.room_type] = [];
+            const roomType = b.room_type || b.roomType || 'Unknown';
+            if (!roomTypeMap[roomType]) {
+              roomTypeMap[roomType] = [];
             }
-            roomTypeMap[b.room_type].push(b);
+            roomTypeMap[roomType].push(b);
           });
 
-          const roomRequests = Object.entries(roomTypeMap).map(([roomType, bookings], reqIndex) => ({
-            id: reqIndex + 1,
-            roomType: roomType,
-            numberOfRooms: bookings.length,
-            selectedRooms: bookings.map(b => b.room_number).filter(Boolean)
-          }));
+          console.log(`Segment ${segIndex + 1} room types:`, Object.keys(roomTypeMap));
+
+          const roomRequests = Object.entries(roomTypeMap).map(([roomType, bookings], reqIndex) => {
+            const selectedRooms = bookings
+              .map(b => b.room_number || b.roomNumber)
+              .filter(rn => rn && rn !== '—' && rn !== '' && rn !== null && rn !== undefined);
+            
+            console.log(`Room Request ${reqIndex + 1}: ${roomType}, ${bookings.length} room(s), selected:`, selectedRooms);
+            
+            return {
+              id: reqIndex + 1,
+              roomType: roomType,
+              numberOfRooms: bookings.length,
+              selectedRooms: selectedRooms
+            };
+          });
 
           return {
             id: segIndex + 1,

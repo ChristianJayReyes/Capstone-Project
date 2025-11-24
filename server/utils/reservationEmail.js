@@ -41,9 +41,15 @@ export const sendReservationEmail = async (to, reservationDetails, isReminder = 
     
             <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
               <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Room:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Room Type:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.roomName || reservationDetails.roomId}</td>
               </tr>
+              ${reservationDetails.roomsBooked && reservationDetails.roomsBooked.length > 0 ? `
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Room Number(s):</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.roomsBooked.join(', ')}</td>
+              </tr>
+              ` : ''}
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Check-In:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${reservationDetails.checkInDate}</td>

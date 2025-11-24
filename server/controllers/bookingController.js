@@ -234,38 +234,12 @@ export const createBooking = async (req, res) => {
     //  Respond to frontend
     res.status(201).json({
       success: true,
-      message: `✅ Booking request submitted successfully for ${bookingsCreated.length} room(s)! Room numbers will be assigned by the admin.`,
+      message: `✅ Booking request submitted successfully for ${bookingsCreated.length} room(s)! Room numbers will be assigned by the admin. You will receive a confirmation email once the admin confirms your booking.`,
       booking: bookingsCreated[0],
       bookings: bookingsCreated,
     });
 
-    // Send email to the user
-    // const pool = await connectDB();
-    const [roomRows] = await db.query(
-      `SELECT rt.type_name AS roomName
-      FROM room_types rt
-      WHERE rt.room_type_id = ?`,
-      [roomTypeId]
-    );
-
-    const roomTypeName = roomRows[0]?.roomName || roomName || "Unknown Room";
-    const primaryBooking = bookingsCreated[0];
-
-    const reservationDetails = {
-      bookingId: primaryBooking?.booking_id,
-      checkInDate: formattedCheckIn,
-      checkOutDate: formattedCheckOut,
-      roomId: roomTypeId,
-      roomName: roomTypeName, 
-      totalPrice: bookingTotalPrice,
-      guests: {
-        adults,
-        children,
-      },
-      roomsBooked: [], // Room numbers will be assigned by admin later
-    };
-
-    await sendReservationEmail(email, reservationDetails);
+    // Email will be sent when admin confirms the booking (in updateBookingStatus)
   } catch (error) {
     console.error("❌ Error creating booking:", error);
     res.status(500).json({
@@ -469,34 +443,30 @@ export const updateBookingStatus = async (req, res) => {
           allowedPaymentStatuses = matches.map((m) => m.replace(/'/g, ""));
         }
 
+        // Update enum to only have 'Not paid' and 'Paid'
         if (
-          !allowedPaymentStatuses.includes("Partial Payment") ||
-          !allowedPaymentStatuses.includes("Payment Complete")
+          !allowedPaymentStatuses.includes("Not paid") ||
+          !allowedPaymentStatuses.includes("Paid")
         ) {
           try {
             await connection.query(
-              "ALTER TABLE bookings MODIFY COLUMN payment_status ENUM('Pending', 'Partial Payment', 'Payment Complete') DEFAULT 'Pending'"
+              "ALTER TABLE bookings MODIFY COLUMN payment_status ENUM('Not paid', 'Paid') DEFAULT 'Not paid'"
             );
-            allowedPaymentStatuses = [
-              "Pending",
-              "Partial Payment",
-              "Payment Complete",
-            ];
+            allowedPaymentStatuses = ["Not paid", "Paid"];
           } catch (error) {
             console.error("Failed to update payment_status enum:", error.message);
+            // Fallback to default values
+            allowedPaymentStatuses = ["Not paid", "Paid"];
           }
         }
       }
     } catch (error) {
       console.error("Failed to check payment_status enum:", error.message);
+      allowedPaymentStatuses = ["Not paid", "Paid"];
     }
 
     if (allowedPaymentStatuses.length === 0) {
-      allowedPaymentStatuses = [
-        "Pending",
-        "Partial Payment",
-        "Payment Complete",
-      ];
+      allowedPaymentStatuses = ["Not paid", "Paid"];
     }
 
     await connection.beginTransaction();
@@ -509,10 +479,14 @@ export const updateBookingStatus = async (req, res) => {
         b.payment_status,
         b.check_in,
         b.check_out,
+        b.adults,
+        b.children,
+        b.total_price,
         u.full_name AS guest_name,
         u.email,
         b.room_number,
-        rt.type_name AS room_type
+        rt.type_name AS room_type,
+        rt.room_type_id
       FROM bookings b
       JOIN users u ON b.user_id = u.user_id
       LEFT JOIN room_types rt ON rt.room_type_id = b.room_type_id
@@ -553,15 +527,15 @@ export const updateBookingStatus = async (req, res) => {
     let newStatus = currentStatus;
     let newPaymentStatus = currentPaymentStatus;
 
-    if (actionLower === "paid") {
-      newStatus = "Confirmed";
-      newPaymentStatus = "Partial Payment";
+    if (actionLower === "confirm") {
+      newStatus = "Arrival";
+      newPaymentStatus = "Paid";
     } else if (actionLower === "checkin") {
-      newStatus = "Checked-in";
-      newPaymentStatus = "Partial Payment";
+      newStatus = "Check-in";
+      newPaymentStatus = currentPaymentStatus; // Keep current payment status
     } else if (actionLower === "checkout") {
-      newStatus = "Checked-out";
-      newPaymentStatus = "Payment Complete";
+      newStatus = "Check-out";
+      newPaymentStatus = currentPaymentStatus; // Keep current payment status
     } else if (actionLower === "cancel") {
       newStatus = "Cancelled";
       newPaymentStatus = currentPaymentStatus;
@@ -576,20 +550,13 @@ export const updateBookingStatus = async (req, res) => {
     // Map payment status to storage-safe value
     let storagePaymentStatus = newPaymentStatus;
     if (!allowedPaymentStatuses.includes(newPaymentStatus)) {
-      if (
-        newPaymentStatus === "Partial Payment" &&
-        allowedPaymentStatuses.includes("Paid")
-      ) {
+      // Map old statuses to new ones
+      if (newPaymentStatus === "Pending" || newPaymentStatus === "Not paid" || !newPaymentStatus) {
+        storagePaymentStatus = "Not paid";
+      } else if (newPaymentStatus === "Paid" || newPaymentStatus === "Partial Payment" || newPaymentStatus === "Payment Complete") {
         storagePaymentStatus = "Paid";
-      } else if (
-        newPaymentStatus === "Payment Complete" &&
-        allowedPaymentStatuses.includes("Completed")
-      ) {
-        storagePaymentStatus = "Completed";
-      } else if (allowedPaymentStatuses.includes("Pending")) {
-        storagePaymentStatus = "Pending";
       } else {
-        storagePaymentStatus = allowedPaymentStatuses[0];
+        storagePaymentStatus = allowedPaymentStatuses[0]; // Default to "Not paid"
       }
     }
 
@@ -612,7 +579,7 @@ export const updateBookingStatus = async (req, res) => {
 
     // Map action to last_action value
     const lastActionMap = {
-      paid: "Paid",
+      confirm: "Confirm",
       checkin: "Check-in",
       checkout: "Check-out",
       cancel: "Cancel",
@@ -779,6 +746,31 @@ export const updateBookingStatus = async (req, res) => {
     }
 
     await connection.commit();
+
+    // Send confirmation email when admin confirms the booking (status changes to "Arrival")
+    if (actionLower === "confirm" && newStatus === "Arrival" && email) {
+      try {
+        const reservationDetails = {
+          bookingId: booking_id,
+          checkInDate: currentBooking.check_in,
+          checkOutDate: currentBooking.check_out,
+          roomId: currentBooking.room_type_id,
+          roomName: currentBooking.room_type || "Unknown Room",
+          totalPrice: currentBooking.total_price || 0,
+          guests: {
+            adults: currentBooking.adults || 0,
+            children: currentBooking.children || 0,
+          },
+          roomsBooked: [], // Don't include room numbers in confirmation email
+        };
+
+        await sendReservationEmail(email, reservationDetails);
+        console.log(`✅ Confirmation email sent to ${email} for booking ${booking_id}`);
+      } catch (emailError) {
+        console.error("❌ Error sending confirmation email:", emailError);
+        // Don't fail the request if email fails
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -1114,5 +1106,257 @@ export const adminGetCalendarBookings = async (req, res) => {
   } catch (err) {
     console.error("Error fetching calendar bookings:", err);
     res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// GET: Get all bookings for a specific booking group (by user email and dates)
+export const getBookingGroup = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { booking_id } = req.params;
+
+    // Get the primary booking to find related bookings
+    const [primaryBooking] = await db.query(
+      `SELECT b.*, u.email, u.full_name, u.phone, rt.type_name AS room_type
+       FROM bookings b
+       JOIN users u ON b.user_id = u.user_id
+       JOIN room_types rt ON b.room_type_id = rt.room_type_id
+       WHERE b.booking_id = ?`,
+      [booking_id]
+    );
+
+    if (primaryBooking.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const primary = primaryBooking[0];
+
+    // Find all bookings with same email, check-in, check-out, and room_type_id
+    // Include all statuses (Pending, Arrival, Check-in) to get the full booking group
+    const [relatedBookings] = await db.query(
+      `SELECT b.*, rt.type_name AS room_type
+       FROM bookings b
+       JOIN room_types rt ON b.room_type_id = rt.room_type_id
+       JOIN users u ON b.user_id = u.user_id
+       WHERE u.email = ? 
+       AND b.check_in = ? 
+       AND b.check_out = ?
+       AND b.room_type_id = ?
+       AND b.status IN ('Pending', 'Arrival', 'Check-in')
+       ORDER BY b.booking_id`,
+      [primary.email, primary.check_in, primary.check_out, primary.room_type_id]
+    );
+
+    res.json({
+      success: true,
+      bookings: relatedBookings,
+      guestName: primary.full_name,
+      email: primary.email,
+      phone: primary.phone || '',
+      roomType: primary.room_type,
+      checkIn: primary.check_in,
+      checkOut: primary.check_out,
+      totalPrice: primary.total_price || 0,
+    });
+  } catch (error) {
+    console.error("Error fetching booking group:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch booking group",
+      error: error.message,
+    });
+  }
+};
+
+// POST: Assign room numbers to bookings
+export const assignRoomNumbers = async (req, res) => {
+  let connection;
+  try {
+    const { booking_ids, room_numbers } = req.body;
+
+    if (!booking_ids || !Array.isArray(booking_ids) || booking_ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "booking_ids array is required",
+      });
+    }
+
+    if (!room_numbers || !Array.isArray(room_numbers) || room_numbers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "room_numbers array is required",
+      });
+    }
+
+    if (booking_ids.length !== room_numbers.length) {
+      return res.status(400).json({
+        success: false,
+        message: "booking_ids and room_numbers arrays must have the same length",
+      });
+    }
+
+    const pool = await connectDB();
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Update each booking with its assigned room number
+    for (let i = 0; i < booking_ids.length; i++) {
+      const bookingId = booking_ids[i];
+      const roomNumber = room_numbers[i];
+
+      if (!roomNumber || roomNumber.trim() === "") {
+        await connection.rollback();
+        return res.status(400).json({
+          success: false,
+          message: `Room number is required for booking ${bookingId}`,
+        });
+      }
+
+      // Check if room is available for the booking dates
+      const [booking] = await connection.query(
+        `SELECT check_in, check_out, room_type_id FROM bookings WHERE booking_id = ?`,
+        [bookingId]
+      );
+
+      if (booking.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          message: `Booking ${bookingId} not found`,
+        });
+      }
+
+      const { check_in, check_out, room_type_id } = booking[0];
+
+      // Check if room exists and is of correct type
+      const [room] = await connection.query(
+        `SELECT room_id, room_type_id, status FROM rooms WHERE room_number = ?`,
+        [roomNumber]
+      );
+
+      if (room.length === 0) {
+        await connection.rollback();
+        return res.status(400).json({
+          success: false,
+          message: `Room ${roomNumber} not found`,
+        });
+      }
+
+      if (room[0].room_type_id !== room_type_id) {
+        await connection.rollback();
+        return res.status(400).json({
+          success: false,
+          message: `Room ${roomNumber} is not of the correct room type`,
+        });
+      }
+
+      // Check if room is already booked for these dates
+      const [existingBookings] = await connection.query(
+        `SELECT booking_id FROM bookings 
+         WHERE room_number = ? 
+         AND booking_id != ?
+         AND (
+           (check_in <= ? AND check_out >= ?) OR
+           (check_in <= ? AND check_out >= ?) OR
+           (? <= check_in AND ? >= check_out)
+         )`,
+        [roomNumber, bookingId, check_in, check_in, check_out, check_out, check_in, check_out]
+      );
+
+      if (existingBookings.length > 0) {
+        await connection.rollback();
+        return res.status(400).json({
+          success: false,
+          message: `Room ${roomNumber} is already booked for the selected dates`,
+        });
+      }
+
+      // Update booking with room number
+      await connection.query(
+        `UPDATE bookings SET room_number = ? WHERE booking_id = ?`,
+        [roomNumber, bookingId]
+      );
+    }
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message: `Room numbers assigned successfully to ${booking_ids.length} booking(s)`,
+    });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error("Error assigning room numbers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to assign room numbers",
+      error: error.message,
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+};
+
+// GET: Get available rooms for a room type and date range
+export const getAvailableRoomsForBooking = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { room_type_id, check_in, check_out } = req.query;
+
+    if (!room_type_id || !check_in || !check_out) {
+      return res.status(400).json({
+        success: false,
+        message: "room_type_id, check_in, and check_out are required",
+      });
+    }
+
+    // Get all available rooms of this type
+    const [availableRooms] = await db.query(
+      `SELECT r.room_id, r.room_number, r.status, rt.type_name
+       FROM rooms r
+       JOIN room_types rt ON r.room_type_id = rt.room_type_id
+       WHERE r.room_type_id = ? AND r.status = 'available'
+       ORDER BY r.room_number`,
+      [room_type_id]
+    );
+
+    // Filter out rooms that are already booked for the selected dates
+    const filteredRooms = [];
+    for (const room of availableRooms) {
+      const [existingBookings] = await db.query(
+        `SELECT booking_id FROM bookings
+         WHERE room_number = ?
+         AND (
+           (check_in <= ? AND check_out >= ?) OR
+           (check_in <= ? AND check_out >= ?) OR
+           (? <= check_in AND ? >= check_out)
+         )`,
+        [room.room_number, check_in, check_in, check_out, check_out, check_in, check_out]
+      );
+
+      if (existingBookings.length === 0) {
+        filteredRooms.push(room);
+      }
+    }
+
+    res.json({
+      success: true,
+      rooms: filteredRooms,
+      count: filteredRooms.length,
+    });
+  } catch (error) {
+    console.error("Error fetching available rooms:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch available rooms",
+      error: error.message,
+    });
   }
 };

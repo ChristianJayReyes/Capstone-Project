@@ -8,7 +8,10 @@ import {
   updateBookingStatus,
   getBookingLogs,
   exportBookingLogs,
-  adminGetCalendarBookings
+  adminGetCalendarBookings,
+  getBookingGroup,
+  assignRoomNumbers,
+  getAvailableRoomsForBooking
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
@@ -26,5 +29,8 @@ bookingRouter.post('/admin/update-status', updateBookingStatus);
 bookingRouter.get('/admin/logs', getBookingLogs);
 bookingRouter.get('/admin/logs/export', exportBookingLogs);
 bookingRouter.get('/admin/calendar', adminGetCalendarBookings);
+bookingRouter.get('/admin/group/:booking_id', protect, getBookingGroup);
+bookingRouter.post('/admin/assign-rooms', protect, assignRoomNumbers);
+bookingRouter.get('/admin/available-rooms', protect, getAvailableRoomsForBooking);
 
 export default bookingRouter;

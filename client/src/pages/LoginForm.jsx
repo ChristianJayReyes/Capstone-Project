@@ -122,7 +122,7 @@ const LoginForm = () => {
     setError("");
 
     try {
-      // If you want to check admin first
+      // First check if it's an admin user
       const adminRes = await fetch(
         "https://rrh-backend.vercel.app/api/auth/admin-login",
         {
@@ -131,21 +131,26 @@ const LoginForm = () => {
           body: JSON.stringify({ email: loginEmail, password: loginPassword }),
         }
       );
-      const adminData = await adminRes.json();
-      if (adminData.success) {
-        // Use loginUser from context to properly set token and user in both localStorage and state
-        loginUser(adminData.user, adminData.token);
-        alert("Admin Login Successfully!");
-        navigate("/owner");
-        return;
-      } else {
-        // Show error message if admin login fails
-        console.error("Admin login failed:", adminData.message);
-        // Don't show error here, let it fall through to regular login
-        // setError(adminData.message || "Admin login failed");
+      
+      if (adminRes.ok) {
+        const adminData = await adminRes.json();
+        if (adminData.success) {
+          // Admin login successful
+          loginUser(adminData.user, adminData.token);
+          Swal.fire({
+            icon: "success",
+            title: "Admin Login Successful!",
+            text: "Welcome back!",
+            timer: 2000,
+            showConfirmButton: false,
+          }).then(() => {
+            navigate("/owner");
+          });
+          return;
+        }
       }
 
-      // Only try regular login if not admin
+      // If not admin, try regular user login
       const userRes = await fetch("https://rrh-backend.vercel.app/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,17 +160,28 @@ const LoginForm = () => {
           captcha: captchaToken,
         }),
       });
+      
       const userData = await userRes.json();
+      
       if (userData.success) {
-        setUserId(userData.user_id);
-        setStep(2); // OTP step
-        alert("📧 OTP sent to your email");
+        // Direct login successful - no OTP needed
+        loginUser(userData.user, userData.token);
+        setShowForm(false);
+        Swal.fire({
+          icon: "success",
+          title: "Login Successful!",
+          text: "Welcome back!",
+          timer: 2000,
+          showConfirmButton: false,
+        }).then(() => {
+          navigate("/");
+        });
       } else {
-        setError(userData.message); 
+        setError(userData.message || "Login failed"); 
       }
     } catch (err) {
-      console.error(err);
-      setError("Something went wrong");
+      console.error("Login error:", err);
+      setError("Something went wrong. Please try again.");
     }
   };
 

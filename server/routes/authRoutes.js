@@ -53,14 +53,18 @@ router.post("/login", async (req, res) => {
   const { email, password, captcha } = req.body;
 
   try {
-    const secretKey = process.env.CAPTCHA_SECRET_KEY;
-    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captcha}`;
-    const captchaResponse = await fetch(verifyUrl, { method: "POST" });
-    const captchaData = await captchaResponse.json();
+    // Verify captcha
+    if (captcha) {
+      const secretKey = process.env.CAPTCHA_SECRET_KEY;
+      const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captcha}`;
+      const captchaResponse = await fetch(verifyUrl, { method: "POST" });
+      const captchaData = await captchaResponse.json();
 
-    if (!captchaData.success) {
-      return res.status(400).json({ success: false, message: "Captcha verification failed. Please try again."});
+      if (!captchaData.success) {
+        return res.status(400).json({ success: false, message: "Captcha verification failed. Please try again."});
+      }
     }
+
     const db = await connectDB();
     const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [
       email,
@@ -72,10 +76,23 @@ router.post("/login", async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    // Log for debugging only
     const user = rows[0];
-    console.log("Received password:", password, typeof password);
-    console.log("Stored password:", user.password, typeof user.password);
+
+    // Check if user is admin - admins should use admin-login endpoint
+    if (user.role === 'hotelAdmin' || user.role === 'admin') {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Admin users should use admin login" 
+      });
+    }
+
+    // Check if user has password (some users might have NULL password if they signed up with Google)
+    if (!user.password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Please use Google sign-in for this account" 
+      });
+    }
 
     const plainPassword =
       typeof password === "object" && password !== null
@@ -96,32 +113,30 @@ router.post("/login", async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    await db.query(
-      "UPDATE users SET otp = ?, otp_expires = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE) WHERE user_id = ?",
-      [otp, user.user_id]
+    // Generate JWT token for direct login (no OTP required)
+    const token = jwt.sign(
+      { id: user.user_id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
     );
 
-    // Send OTP email
-    await transporter.sendMail({
-      from: `"Rosario Resorts" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Your Login Verification Code",
-      html: `<p>Use the following code to verify your login:</p>
-             <h2>${otp}</h2>
-             <p>This code will expire in 5 minutes.</p>`,
-    });
-
-    // Return user_id so frontend can use it
+    // Return user data and token for immediate login
     res.json({
       success: true,
-      message: "OTP sent to your email",
-      user_id: user.user_id,
-      email: user.email,
+      message: "Login successful",
+      token,
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role || 'user',
+        phone: user.phone,
+        address: user.address,
+        photo: user.photo
+      },
     });
   } catch (err) {
-    console.error(err);
+    console.error("Login error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });

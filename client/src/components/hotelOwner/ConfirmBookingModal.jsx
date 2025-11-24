@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAppContext } from '../../context/AppContext';
 
 const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
+  const { token } = useAppContext();
   const [bookingGroup, setBookingGroup] = useState(null);
   const [availableRooms, setAvailableRooms] = useState([]);
   const [roomAssignments, setRoomAssignments] = useState({});
@@ -26,6 +28,14 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       return;
     }
     
+    // Check if token is available
+    if (!token) {
+      console.error('No authentication token found');
+      setBookingGroup({ error: 'Authentication required. Please log in again.' });
+      setFetching(false);
+      return;
+    }
+    
     // Debug: Log the booking object
     console.log('Fetching booking group for:', booking);
     console.log('Booking ID:', booking.bookingId || booking.booking_id || booking.id);
@@ -46,10 +56,17 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       const url = `https://rrh-backend.vercel.app/api/bookings/admin/group/${bookingId}`;
       console.log('Fetching from URL:', url);
       
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authorization token if available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
       
       console.log('Response status:', response.status);
@@ -90,12 +107,19 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
 
   const fetchAvailableRooms = async (bookingItem) => {
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authorization token if available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(
         `https://rrh-backend.vercel.app/api/bookings/admin/available-rooms?room_type_id=${bookingItem.room_type_id}&check_in=${bookingItem.check_in}&check_out=${bookingItem.check_out}`,
         {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
         }
       );
       const data = await response.json();
@@ -133,13 +157,20 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       const bookingIds = bookingGroup.bookings.map((b) => b.booking_id);
       const roomNumbers = bookingIds.map((id) => roomAssignments[id]);
 
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authorization token if available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const assignResponse = await fetch(
         'https://rrh-backend.vercel.app/api/bookings/admin/assign-rooms',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({
             booking_ids: bookingIds,
             room_numbers: roomNumbers,

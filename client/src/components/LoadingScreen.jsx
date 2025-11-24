@@ -101,7 +101,7 @@ const LoadingScreen = () => {
           transition={{ delay: 0.4, duration: 0.6 }}
           className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 text-center drop-shadow-2xl"
         >
-          Rosario Resort
+          Rosario Resort and Hotel
         </motion.h1>
 
         {/* Subtitle */}

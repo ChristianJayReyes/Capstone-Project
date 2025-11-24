@@ -116,7 +116,7 @@ const AllRooms = () => {
       {/* Left: Rooms List */}
       <div className="flex-1">
         <div className="mb-10">
-          <h1 className="font-playfair text-4xl md:text-[42px] font-semibold bg-gradient-to-r from-indigo-600 to-purple-500 bg-clip-text text-transparent">
+          <h1 className="font-playfair text-4xl md:text-[42px] font-semibold text-black">
             Hotel Rooms
           </h1>
           <p className="text-sm md:text-base text-gray-500 mt-3 max-w-2xl">

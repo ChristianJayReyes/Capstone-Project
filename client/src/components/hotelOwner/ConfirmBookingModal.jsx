@@ -1,0 +1,328 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
+  const [bookingGroup, setBookingGroup] = useState(null);
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [roomAssignments, setRoomAssignments] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && booking) {
+      fetchBookingGroup();
+    }
+  }, [isOpen, booking]);
+
+  const fetchBookingGroup = async () => {
+    if (!booking) return;
+    setFetching(true);
+    try {
+      const response = await fetch(
+        `https://rrh-backend.vercel.app/api/bookings/admin/group/${booking.bookingId}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setBookingGroup(data);
+        // Initialize room assignments
+        const assignments = {};
+        data.bookings.forEach((b, index) => {
+          assignments[b.booking_id] = b.room_number || '';
+        });
+        setRoomAssignments(assignments);
+        // Fetch available rooms
+        if (data.bookings.length > 0) {
+          fetchAvailableRooms(data.bookings[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching booking group:', error);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const fetchAvailableRooms = async (bookingItem) => {
+    try {
+      const response = await fetch(
+        `https://rrh-backend.vercel.app/api/bookings/admin/available-rooms?room_type_id=${bookingItem.room_type_id}&check_in=${bookingItem.check_in}&check_out=${bookingItem.check_out}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setAvailableRooms(data.rooms || []);
+      }
+    } catch (error) {
+      console.error('Error fetching available rooms:', error);
+    }
+  };
+
+  const handleRoomAssignment = (bookingId, roomNumber) => {
+    setRoomAssignments((prev) => ({
+      ...prev,
+      [bookingId]: roomNumber,
+    }));
+  };
+
+  const handleConfirm = async () => {
+    if (!bookingGroup) return;
+
+    // Validate all rooms are assigned
+    const unassigned = bookingGroup.bookings.filter(
+      (b) => !roomAssignments[b.booking_id] || roomAssignments[b.booking_id].trim() === ''
+    );
+
+    if (unassigned.length > 0) {
+      alert('Please assign room numbers to all bookings before confirming.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Assign room numbers
+      const bookingIds = bookingGroup.bookings.map((b) => b.booking_id);
+      const roomNumbers = bookingIds.map((id) => roomAssignments[id]);
+
+      const assignResponse = await fetch(
+        'https://rrh-backend.vercel.app/api/bookings/admin/assign-rooms',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            booking_ids: bookingIds,
+            room_numbers: roomNumbers,
+          }),
+        }
+      );
+
+      const assignData = await assignResponse.json();
+      if (!assignData.success) {
+        alert(`Failed to assign rooms: ${assignData.message}`);
+        setLoading(false);
+        return;
+      }
+
+      // Confirm booking (update status to Arrival)
+      const confirmResponse = await fetch(
+        'https://rrh-backend.vercel.app/api/bookings/admin/update-status',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            booking_id: booking.bookingId,
+            action: 'confirm',
+          }),
+        }
+      );
+
+      const confirmData = await confirmResponse.json();
+      if (confirmData.success) {
+        onConfirm();
+        onClose();
+      } else {
+        alert(`Failed to confirm booking: ${confirmData.message}`);
+      }
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      alert('An error occurred while confirming the booking.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen || !booking) return null;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[9999] p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative"
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 via-cyan-500 to-yellow-500 p-6 sm:p-8 rounded-t-3xl sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+                    Confirm Booking
+                  </h2>
+                  <p className="text-sm text-white/90">
+                    Confirm booking details of {bookingGroup?.guestName || booking.guestName}
+                  </p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all duration-300 hover:scale-110"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 sm:p-8">
+              {fetching ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              ) : bookingGroup ? (
+                <div className="space-y-6">
+                  {/* Guest Information */}
+                  <section className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-100">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Guest Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700 mb-1 block">Guest Name</label>
+                        <input
+                          type="text"
+                          value={bookingGroup.guestName || ''}
+                          readOnly
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 bg-gray-50 text-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700 mb-1 block">Email</label>
+                        <input
+                          type="email"
+                          value={bookingGroup.email || ''}
+                          readOnly
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 bg-gray-50 text-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700 mb-1 block">Room Type</label>
+                        <input
+                          type="text"
+                          value={bookingGroup.roomType || ''}
+                          readOnly
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 bg-gray-50 text-gray-700"
+                        />
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Room Assignments */}
+                  <section className="bg-white rounded-2xl p-6 border border-gray-200">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Room Assignments</h3>
+                    <div className="space-y-4">
+                      {bookingGroup.bookings.map((bookingItem, index) => (
+                        <div
+                          key={bookingItem.booking_id}
+                          className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-5 border border-gray-200"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-gray-800">
+                              Room #{index + 1}
+                            </h4>
+                            <span className="text-sm text-gray-600">
+                              Booking ID: {bookingItem.booking_id}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                Select Room Unit <span className="text-red-500">*</span>
+                              </label>
+                              <select
+                                value={roomAssignments[bookingItem.booking_id] || ''}
+                                onChange={(e) =>
+                                  handleRoomAssignment(bookingItem.booking_id, e.target.value)
+                                }
+                                className="w-full rounded-lg border-2 border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                required
+                              >
+                                <option value="">Select room unit...</option>
+                                {availableRooms.map((room) => (
+                                  <option key={room.room_id} value={room.room_number}>
+                                    {room.room_number} - {room.type_name}
+                                  </option>
+                                ))}
+                              </select>
+                              {!roomAssignments[bookingItem.booking_id] && (
+                                <p className="text-xs text-red-500 mt-1">Room number is required</p>
+                              )}
+                            </div>
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                Available Rooms
+                              </label>
+                              <div className="w-full rounded-lg bg-gradient-to-br from-blue-500 via-cyan-500 to-yellow-500 border-2 border-transparent px-4 py-2.5 text-center text-white font-semibold">
+                                {availableRooms.length} rooms available
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                    <button
+                      onClick={onClose}
+                      disabled={loading}
+                      className="px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition-all duration-300 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirm}
+                      disabled={loading || fetching}
+                      className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-yellow-500 hover:from-blue-700 hover:to-yellow-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                    >
+                      {loading ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Confirming...
+                        </span>
+                      ) : (
+                        <span className="relative z-10">Confirm</span>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">Loading booking details...</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default ConfirmBookingModal;
+

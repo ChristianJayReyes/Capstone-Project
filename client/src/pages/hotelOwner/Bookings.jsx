@@ -3,6 +3,8 @@ import Title from '../../components/Title';
 import { assets } from '../../assets/assets';
 import '../../styles/dashboard.css';
 import { useAppContext } from '../../context/AppContext';
+import ConfirmBookingModal from '../../components/hotelOwner/ConfirmBookingModal';
+import CheckInEditForm from '../../components/hotelOwner/CheckInEditForm';
 
 const toManilaDateTime = (date = new Date()) => {
   const manilaTime = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
@@ -15,34 +17,35 @@ const toManilaDateTime = (date = new Date()) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-/* Normalize status from database format to lowercase with underscores */
+/* Normalize status from database format */
 const normalizeStatus = (status) => {
-  if (!status) return 'confirmed';
-  const normalized = status.toLowerCase().replace(/-/g, '_');
+  if (!status) return 'pending';
+  const normalized = status.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
   // Map database values to normalized values
-  if (normalized === 'checked_in' || normalized === 'checked-in') return 'checked_in';
-  if (normalized === 'checked_out' || normalized === 'checked-out') return 'checked_out';
+  if (normalized === 'pending') return 'pending';
+  if (normalized === 'arrival') return 'arrival';
+  if (normalized === 'check_in' || normalized === 'check-in') return 'check_in';
+  if (normalized === 'check_out' || normalized === 'checked-out' || normalized === 'checked_out') return 'check_out';
   if (normalized === 'cancelled') return 'cancelled';
-  if (normalized === 'confirmed') return 'confirmed';
-  return 'confirmed'; // default
+  return 'pending'; // default
 };
 
 /* Normalize payment status */
 const normalizePaymentStatus = (paymentStatus) => {
-  if (!paymentStatus) return 'pending';
+  if (!paymentStatus) return 'not_paid';
   const normalized = paymentStatus.toLowerCase().replace(/\s+/g, '_');
-  if (normalized === 'not_paid') return 'pending';
-  if (normalized === 'pending') return 'pending';
-  if (normalized === 'paid') return 'partial_payment';
-  if (normalized === 'partial_payment') return 'partial_payment';
-  if (normalized === 'payment_complete' || normalized === 'completed') return 'payment_complete';
-  return 'pending';
+  if (normalized === 'not_paid' || normalized === 'notpaid') return 'not_paid';
+  if (normalized === 'paid') return 'paid';
+  // Map old statuses to new ones
+  if (normalized === 'pending') return 'not_paid';
+  if (normalized === 'partial_payment' || normalized === 'partialpayment') return 'paid';
+  if (normalized === 'payment_complete' || normalized === 'paymentcomplete' || normalized === 'completed') return 'paid';
+  return 'not_paid';
 };
 
 const PAYMENT_STATUS_LABELS = {
-  pending: 'Pending',
-  partial_payment: 'Partial Payment',
-  payment_complete: 'Payment Complete',
+  not_paid: 'Not paid',
+  paid: 'Paid',
 };
 
 /* Map booking */
@@ -53,6 +56,11 @@ const mapBookingData = (b) => {
   
   const normalizedPaymentStatus = normalizePaymentStatus(b.payment_status);
   const displayPaymentStatus = PAYMENT_STATUS_LABELS[normalizedPaymentStatus] || 'Pending';
+  
+  // Parse guests string to extract adults and children
+  const guestsMatch = b.guests?.match(/Adult (\d+).*Child (\d+)/);
+  const adults = guestsMatch ? parseInt(guestsMatch[1]) : 0;
+  const children = guestsMatch ? parseInt(guestsMatch[2]) : 0;
   
   return {
     _id: String(b.booking_id ?? ''),
@@ -66,12 +74,117 @@ const mapBookingData = (b) => {
     checkInTime: checkInTime,
     checkOutTime: checkOutTime,
     guests: b.guests ?? '—',
+    adults: adults,
+    children: children,
     totalPrice: Number(b.total_price ?? 0),
     paymentStatus: displayPaymentStatus,
     status: normalizeStatus(b.booking_status),
     normalizedPaymentStatus,
     createdAt: b.created_at ?? '',
   };
+};
+
+/* Group bookings by guest, check-in, and check-out dates */
+const groupBookings = (bookings) => {
+  const groups = {};
+  
+  bookings.forEach(booking => {
+    // Create a unique key for grouping: email + check-in + check-out
+    const key = `${booking.email}_${booking.checkInDate}_${booking.checkOutDate}`;
+    
+    if (!groups[key]) {
+      groups[key] = {
+        primaryBooking: booking,
+        bookings: [booking],
+        bookingIds: [booking.bookingId],
+        roomTypes: {},
+        roomNumbers: [],
+        totalAdults: 0,
+        totalChildren: 0,
+        totalPrice: 0,
+        status: booking.status,
+        paymentStatus: booking.paymentStatus,
+        normalizedPaymentStatus: booking.normalizedPaymentStatus,
+      };
+    } else {
+      groups[key].bookings.push(booking);
+      groups[key].bookingIds.push(booking.bookingId);
+    }
+    
+    // Aggregate room types
+    const roomType = booking.roomType;
+    if (roomType && roomType !== '—') {
+      groups[key].roomTypes[roomType] = (groups[key].roomTypes[roomType] || 0) + 1;
+    }
+    
+    // Aggregate room numbers
+    if (booking.roomNumber && booking.roomNumber !== '—') {
+      if (!groups[key].roomNumbers.includes(booking.roomNumber)) {
+        groups[key].roomNumbers.push(booking.roomNumber);
+      }
+    }
+    
+    // Aggregate guests
+    groups[key].totalAdults += booking.adults || 0;
+    groups[key].totalChildren += booking.children || 0;
+    
+    // Aggregate total price
+    groups[key].totalPrice += booking.totalPrice || 0;
+    
+    // Use the most recent status (or highest priority: pending < arrival < check-in)
+    const statusPriority = { pending: 1, arrival: 2, check_in: 3, check_out: 4, cancelled: 0 };
+    if (statusPriority[booking.status] > statusPriority[groups[key].status]) {
+      groups[key].status = booking.status;
+    }
+    
+    // Use the most recent payment status
+    if (booking.normalizedPaymentStatus === 'paid') {
+      groups[key].normalizedPaymentStatus = 'paid';
+      groups[key].paymentStatus = 'Paid';
+    }
+  });
+  
+  // Convert groups to array and format display
+  return Object.values(groups).map(group => {
+    // Format room types: "2x Family Room" or "1x Family Room, 1x Deluxe Twin"
+    const roomTypeParts = Object.entries(group.roomTypes).map(([type, count]) => {
+      return `${count}x ${type}`;
+    });
+    const roomTypeDisplay = roomTypeParts.join(', ');
+    
+    // Format guests: "1A, 2A" or "Total: 3A"
+    const guestParts = group.bookings.map(b => {
+      const a = b.adults || 0;
+      return `${a}A`;
+    });
+    const guestsDisplay = group.bookings.length > 1 
+      ? `${guestParts.join(', ')} (Total: ${group.totalAdults}A)`
+      : `Adult ${group.totalAdults} | Child ${group.totalChildren}`;
+    
+    // Format room numbers: "202, 203"
+    const roomNumbersDisplay = group.roomNumbers.length > 0 
+      ? group.roomNumbers.sort((a, b) => {
+          const numA = parseInt(a) || 0;
+          const numB = parseInt(b) || 0;
+          return numA - numB;
+        }).join(', ')
+      : '—';
+    
+    return {
+      ...group.primaryBooking,
+      bookingIds: group.bookingIds,
+      bookingCount: group.bookings.length,
+      roomTypeDisplay: roomTypeDisplay || group.primaryBooking.roomType,
+      roomNumbersDisplay: roomNumbersDisplay,
+      guestsDisplay: guestsDisplay,
+      totalAdults: group.totalAdults,
+      totalChildren: group.totalChildren,
+      totalPrice: group.totalPrice,
+      status: group.status,
+      paymentStatus: group.paymentStatus,
+      normalizedPaymentStatus: group.normalizedPaymentStatus,
+    };
+  });
 };
 
 
@@ -89,14 +202,14 @@ const Bookings = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Paid modal state
-  const [paidModal, setPaidModal] = useState({ open: false, booking: null, pendingConfirm: false });
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState({ open: false, booking: null });
   
   // Checkout modal state
   const [checkoutModal, setCheckoutModal] = useState({ open: false, booking: null, pendingConfirm: false });
   
-  // Check-in modal state
-  const [checkinModal, setCheckinModal] = useState({ open: false, booking: null, pendingConfirm: false });
+  // Check-in/Edit form state
+  const [checkinForm, setCheckinForm] = useState({ open: false, booking: null, mode: 'checkin' });
   
   // Cancel confirmation modal state
   const [cancelModal, setCancelModal] = useState({ open: false, booking: null });
@@ -122,7 +235,10 @@ const Bookings = () => {
       const json = await res.json();
       const arr = Array.isArray(json) ? json : (json.data ?? []);
       const mapped = arr.map(mapBookingData);
-      setBookings(mapped.filter(b => b.status !== 'checked_out' && b.status !== 'cancelled'));
+      const filtered = mapped.filter(b => b.status !== 'check_out' && b.status !== 'cancelled');
+      // Group bookings by guest, check-in, and check-out dates
+      const grouped = groupBookings(filtered);
+      setBookings(grouped);
     } catch (err) {
       console.error('Failed to fetch bookings', err);
       setBookings([]);
@@ -139,9 +255,10 @@ const Bookings = () => {
   useEffect(() => {
     const filtered = (bookings || []).filter(b => {
       const q = searchTerm.trim().toLowerCase();
-      const matchesSearch = !q || b.guestName.toLowerCase().includes(q) || b.roomType.toLowerCase().includes(q);
+      const roomTypeToSearch = (b.roomTypeDisplay || b.roomType || '').toLowerCase();
+      const matchesSearch = !q || b.guestName.toLowerCase().includes(q) || roomTypeToSearch.includes(q);
       const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
-      const matchesRoomType = roomTypeFilter === 'all' || b.roomType === roomTypeFilter;
+      const matchesRoomType = roomTypeFilter === 'all' || (b.roomTypeDisplay || b.roomType) === roomTypeFilter;
       const matchesDate = !dateFilter || b.checkInDate === dateFilter;
       const matchesCheckOut = !checkOutFilter || b.checkOutDate === checkOutFilter;
       return matchesSearch && matchesStatus && matchesRoomType && matchesDate && matchesCheckOut;
@@ -156,10 +273,10 @@ const Bookings = () => {
       setActionLoading(true);
       let response;
 
-      // Handle Paid action - just show confirmation
-      if (action === 'paid') {
-        // Open paid confirmation modal
-        setPaidModal({ open: true, booking: booking, pendingConfirm: true });
+      // Handle Confirm action - show confirmation modal with room assignment
+      if (action === 'confirm') {
+        // Open confirm modal
+        setConfirmModal({ open: true, booking: booking });
         setActionLoading(false);
         return;
       }
@@ -172,10 +289,18 @@ const Bookings = () => {
         return;
       }
 
-      // Handle Check-in action - show confirmation modal (user must confirm)
+      // Handle Check-in action - show check-in form
       if (action === 'checkin') {
-        // Open check-in confirmation modal
-        setCheckinModal({ open: true, booking: booking, pendingConfirm: true });
+        // Open check-in form
+        setCheckinForm({ open: true, booking: booking, mode: 'checkin' });
+        setActionLoading(false);
+        return;
+      }
+
+      // Handle Edit action - show edit form
+      if (action === 'edit') {
+        // Open edit form
+        setCheckinForm({ open: true, booking: booking, mode: 'edit' });
         setActionLoading(false);
         return;
       }
@@ -236,31 +361,39 @@ const Bookings = () => {
     }
   };
 
-  const roomTypes = Array.from(new Set(bookings.map(b => b.roomType))).filter(Boolean);
+  // Extract unique room types from grouped bookings (use primary booking's room type for filter)
+  const roomTypes = Array.from(new Set(bookings.map(b => {
+    // For grouped bookings, extract individual room types from roomTypeDisplay
+    if (b.roomTypeDisplay && b.roomTypeDisplay.includes(',')) {
+      return b.roomType; // Use primary room type for filter
+    }
+    return b.roomTypeDisplay || b.roomType;
+  }))).filter(Boolean);
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
   const paginatedBookings = (filteredBookings || []).slice((page - 1) * pageSize, page * pageSize);
   
   // Status Config
   const STATUS_CONFIG = {
-    confirmed: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Confirmed' },
+    pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', label: 'Pending' },
+    arrival: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Arrival' },
+    check_in: { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Check-in' },
+    check_out: { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Check-out' },
     cancelled: { color: 'bg-red-100 text-red-800 border-red-200', label: 'Cancelled' },
-    'no-show': { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'No-Show' },
-    checked_in: { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Checked-In' },
-    checked_out: { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Checked-Out' },
-    'Checked-in': { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Checked-In' },
-    'Checked-out': { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Checked-Out' },
-    'Cancelled': { color: 'bg-red-100 text-red-800 border-red-200', label: 'Cancelled' },
-    'Confirmed': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Confirmed' }
+    // Legacy mappings
+    confirmed: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Arrival' },
+    checked_in: { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Check-in' },
+    checked_out: { color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Check-out' },
   };
 
   const getStatusConfig = (b) => STATUS_CONFIG[b.status] || STATUS_CONFIG.confirmed;  
 
   // Subtle row background highlights by status
   const ROW_BG = {
-    confirmed: 'bg-green-50',
-    checked_in: 'bg-blue-50',
-    checked_out: 'bg-gray-50',
+    pending: 'bg-yellow-50',
+    arrival: 'bg-green-50',
+    check_in: 'bg-blue-50',
+    check_out: 'bg-gray-50',
     cancelled: 'bg-red-50',
   };
 
@@ -293,8 +426,11 @@ const Bookings = () => {
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white">
                 <option value="all">All Status</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="checked_in">Checked-In</option>
+                <option value="pending">Pending</option>
+                <option value="arrival">Arrival</option>
+                <option value="check_in">Check-in</option>
+                <option value="check_out">Check-out</option>
+                <option value="cancelled">Cancelled</option>
                 <option value="checked_out">Checked-Out</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -355,15 +491,29 @@ const Bookings = () => {
                     const rowBg = getRowBgClass(b.status);
                     return (
                       <tr key={b._id} className={`${rowBg} hover:bg-gray-50 transition-colors`}>
-                        <td className="py-4 px-4 text-center text-sm text-gray-900 font-mono">#{String(b._id).slice(-6)}</td>
+                        <td className="py-4 px-4 text-center text-sm text-gray-900 font-mono">
+                          #{String(b.bookingId).slice(-6)}
+                          {b.bookingCount > 1 && (
+                            <span className="ml-1 text-xs text-blue-600 font-semibold">+{b.bookingCount - 1} more</span>
+                          )}
+                        </td>
                         <td className="py-4 px-4 text-left text-sm text-gray-900">
                           <div className="font-medium">{b.guestName}</div>
                           {b.email && (
                             <div className="text-xs text-gray-500 mt-0.5">{b.email}</div>
                           )}
                         </td>
-                        <td className="py-4 px-4 text-left text-sm text-gray-900">{b.roomType}</td>
-                        <td className="py-4 px-4 text-center text-sm text-gray-900">{b.roomNumber || '—'}</td>
+                        <td className="py-4 px-4 text-left text-sm text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <span>{b.roomTypeDisplay || b.roomType}</span>
+                            {b.bookingCount > 1 && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                                {b.bookingCount} rooms total
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center text-sm text-gray-900">{b.roomNumbersDisplay || b.roomNumber || '—'}</td>
                         <td className="py-4 px-4 text-center text-sm text-gray-900">
                           {b.checkInDate ? (
                             <>
@@ -402,7 +552,7 @@ const Bookings = () => {
                             </>
                           )}
                         </td>
-                        <td className="py-4 px-4 text-center text-sm text-gray-900">{b.guests}</td>
+                        <td className="py-4 px-4 text-center text-sm text-gray-900">{b.guestsDisplay || b.guests}</td>
                         <td className="py-4 px-4 text-center text-sm text-gray-900 font-semibold">₱{(b.totalPrice || 0).toLocaleString()}</td>
                         <td className="py-4 px-4 text-center text-sm text-gray-900">{b.paymentStatus}</td>
                         <td className="py-4 px-4 text-center">
@@ -411,15 +561,15 @@ const Bookings = () => {
 
                         <td className="py-4 px-4 text-center">
                           <div className="flex flex-row gap-2 items-center justify-center flex-nowrap">
-                            {/* Flow 1: Pending + Confirmed -> Mark as Paid & Cancel */}
-                            {b.status === 'confirmed' && b.normalizedPaymentStatus === 'pending' && (
+                            {/* Flow 1: Pending + Not paid -> Confirm & Cancel */}
+                            {b.status === 'pending' && b.normalizedPaymentStatus === 'not_paid' && (
                               <>
                                 <button
-                                  onClick={() => handleBookingAction(b, 'paid')}
+                                  onClick={() => handleBookingAction(b, 'confirm')}
                                   disabled={actionLoading}
                                   className="inline-flex items-center px-5 h-9 border border-green-400 text-xs font-medium rounded-lg text-green-700 bg-white hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  Mark as Paid
+                                  Confirm
                                 </button>
                                 <button
                                   onClick={() => handleBookingAction(b, 'cancel')}
@@ -430,8 +580,8 @@ const Bookings = () => {
                                 </button>
                               </>
                             )}
-                            {/* Flow 2: Partial Payment + Confirmed -> Check-in & Cancel */}
-                            {b.status === 'confirmed' && b.normalizedPaymentStatus === 'partial_payment' && (
+                            {/* Flow 2: Arrival + Paid -> Check-in & Cancel (also handle legacy 'confirmed' status) */}
+                            {(b.status === 'arrival' || b.status === 'confirmed') && b.normalizedPaymentStatus === 'paid' && (
                               <>
                                 <button
                                   onClick={() => handleBookingAction(b, 'checkin')}
@@ -449,15 +599,15 @@ const Bookings = () => {
                                 </button>
                               </>
                             )}
-                            {/* Flow 3: Partial Payment + Checked-in -> Check-out & Cancel */}
-                            {b.status === 'checked_in' && b.normalizedPaymentStatus === 'partial_payment' && (
+                            {/* Flow 2b: Arrival + Not paid -> Check-in & Cancel (for bookings that were confirmed but payment status might not be updated) */}
+                            {(b.status === 'arrival' || b.status === 'confirmed') && b.normalizedPaymentStatus === 'not_paid' && (
                               <>
                                 <button
-                                  onClick={() => handleBookingAction(b, 'checkout')}
+                                  onClick={() => handleBookingAction(b, 'checkin')}
                                   disabled={actionLoading}
-                                  className="inline-flex items-center px-5 h-9 border border-orange-400 text-xs font-medium rounded-lg text-orange-700 bg-white hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="inline-flex items-center px-5 h-9 border border-blue-400 text-xs font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  Check-out
+                                  Check-in
                                 </button>
                                 <button
                                   onClick={() => handleBookingAction(b, 'cancel')}
@@ -468,8 +618,27 @@ const Bookings = () => {
                                 </button>
                               </>
                             )}
-                            {/* Flow 4: Payment Complete + Checked-out -> No actions (finished) */}
-                            {b.status === 'checked_out' && b.normalizedPaymentStatus === 'payment_complete' && (
+                            {/* Flow 3: Check-in -> Check-out & Edit */}
+                            {b.status === 'check_in' && (
+                              <>
+                                <button
+                                  onClick={() => handleBookingAction(b, 'checkout')}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center px-5 h-9 border border-orange-400 text-xs font-medium rounded-lg text-orange-700 bg-white hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Check-out
+                                </button>
+                                <button
+                                  onClick={() => handleBookingAction(b, 'edit')}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center px-5 h-9 border border-blue-400 text-xs font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Edit
+                                </button>
+                              </>
+                            )}
+                            {/* Flow 4: Check-out -> No actions (finished) */}
+                            {b.status === 'check_out' && (
                               <span className="text-sm text-gray-500">—</span>
                             )}
                             {/* Cancelled -> No actions */}
@@ -520,77 +689,15 @@ const Bookings = () => {
           </div>
         )}
 
-        {/* Paid Modal - Confirmation */}
-        {paidModal.open && paidModal.pendingConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
-            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border text-center">
-              <div className="mb-5">
-                <h3 className="text-lg font-semibold mb-2">Mark as Paid</h3>
-                <div className="mb-1 text-gray-700">
-                  <span className="font-semibold">{paidModal.booking?.guestName || ''}</span>
-                  {paidModal.booking?.roomNumber && (
-                    <>
-                      <span> • Room {paidModal.booking.roomNumber}</span>
-                      {paidModal.booking?.roomType && (
-                        <span> ({paidModal.booking.roomType})</span>
-                      )}
-                    </>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600 mt-2">Are you sure you want to mark this booking as paid?</p>
-              </div>
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={async () => {
-                    setActionLoading(true);
-                    try {
-                      const autoDatetime = toManilaDateTime();
-                      const response = await fetch(UPDATE_STATUS_API, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          booking_id: paidModal.booking.bookingId,
-                          action: 'paid',
-                        }),
-                      });
-                      const result = await response.json();
-                      if (result.success) {
-                        await refetch();
-                        setPaidModal({ open: false, booking: null, pendingConfirm: false });
-                      } else {
-                        alert(`Paid failed: ${result.message}`);
-                      }
-                    } catch (error) {
-                      console.error('Error:', error);
-                      alert(`Paid failed: ${error.message}`);
-                    } finally {
-                      setActionLoading(false);
-                    }
-                  }}
-                  className={`min-w-[120px] h-10 px-4 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : 'Confirm'}
-                </button>
-                <button
-                  onClick={() => setPaidModal({ open: false, booking: null, pendingConfirm: false })}
-                  className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Confirm Booking Modal */}
+        <ConfirmBookingModal
+          isOpen={confirmModal.open}
+          onClose={() => setConfirmModal({ open: false, booking: null })}
+          booking={confirmModal.booking}
+          onConfirm={async () => {
+            await refetch();
+          }}
+        />
 
         {/* Checkout Modal - Confirmation */}
         {checkoutModal.open && checkoutModal.pendingConfirm && (
@@ -665,82 +772,45 @@ const Bookings = () => {
           </div>
         )}
 
-        {/* Check-in Modal - Confirmation */}
-        {checkinModal.open && checkinModal.pendingConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
-            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border text-center">
-              <div className="mb-5">
-                <h3 className="text-lg font-semibold mb-2">Check-in</h3>
-                <div className="mb-1 text-gray-700">
-                  <span className="font-semibold">{checkinModal.booking?.guestName || ''}</span>
-                  {checkinModal.booking?.roomNumber && (
-                    <>
-                      <span> • Room {checkinModal.booking.roomNumber}</span>
-                      {checkinModal.booking?.roomType && (
-                        <span> ({checkinModal.booking.roomType})</span>
-                      )}
-                    </>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600 mt-2">Are you sure you want to check-in this guest?</p>
-              </div>
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={async () => {
-                    setActionLoading(true);
-                    try {
-                      const now = new Date();
-                      const bookingDate = checkinModal.booking?.checkInDate ? new Date(checkinModal.booking.checkInDate) : now;
-                      bookingDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
-                      const autoDatetime = toManilaDateTime();
-
-                      const response = await fetch(UPDATE_STATUS_API, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          booking_id: checkinModal.booking.bookingId,
-                          action: 'checkin',
-                          datetime: autoDatetime,
-                        }),
-                      });
-                      const result = await response.json();
-                      if (result.success) {
-                        await refetch();
-                        setCheckinModal({ open: false, booking: null, pendingConfirm: false });
-                      } else {
-                        alert(`Check-in failed: ${result.message}`);
-                      }
-                    } catch (error) {
-                      console.error('Error:', error);
-                      alert(`Check-in failed: ${error.message}`);
-                    } finally {
-                      setActionLoading(false);
-                    }
-                  }}
-                  className={`min-w-[120px] h-10 px-4 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : 'Confirm'}
-                </button>
-                <button
-                  onClick={() => setCheckinModal({ open: false, booking: null, pendingConfirm: false })}
-                  className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Check-in/Edit Form */}
+        <CheckInEditForm
+          isOpen={checkinForm.open}
+          onClose={() => setCheckinForm({ open: false, booking: null, mode: 'checkin' })}
+          booking={checkinForm.booking}
+          mode={checkinForm.mode}
+          onSave={async (formData) => {
+            try {
+              const autoDatetime = toManilaDateTime();
+              const response = await fetch(UPDATE_STATUS_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  booking_id: checkinForm.booking.bookingId,
+                  action: checkinForm.mode === 'edit' ? 'checkin' : 'checkin',
+                  datetime: autoDatetime,
+                }),
+              });
+              const result = await response.json();
+              if (result.success) {
+                await refetch();
+              } else {
+                alert(`Failed: ${result.message}`);
+              }
+            } catch (error) {
+              console.error('Error:', error);
+              alert(`Failed: ${error.message}`);
+            }
+          }}
+          onSendEmail={async (formData) => {
+            // Send email with booking details
+            try {
+              // This will be handled by the backend when status changes
+              alert('Email will be sent after confirmation');
+            } catch (error) {
+              console.error('Error sending email:', error);
+            }
+          }}
+        />
 
         {/* Cancel Confirmation Modal */}
         {cancelModal.open && (

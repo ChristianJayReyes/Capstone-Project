@@ -5,8 +5,9 @@ import { useAppContext } from '../../context/AppContext';
 const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
   const { token } = useAppContext();
   const [bookingGroup, setBookingGroup] = useState(null);
-  const [availableRooms, setAvailableRooms] = useState([]);
-  const [roomAssignments, setRoomAssignments] = useState({});
+  const [availableRooms, setAvailableRooms] = useState({}); // Changed to object: { roomType: [rooms] }
+  const [roomAssignments, setRoomAssignments] = useState({}); // Changed to: { roomType: [roomNumbers] }
+  const [roomTypeGroups, setRoomTypeGroups] = useState([]); // Group bookings by room type
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
 
@@ -16,8 +17,9 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
     } else if (!isOpen) {
       // Reset state when modal closes
       setBookingGroup(null);
-      setAvailableRooms([]);
+      setAvailableRooms({});
       setRoomAssignments({});
+      setRoomTypeGroups([]);
       setFetching(false);
     }
   }, [isOpen, booking]);
@@ -88,14 +90,41 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       
       if (data.success && data.bookings && data.bookings.length > 0) {
         setBookingGroup(data);
-        // Initialize room assignments
+        
+        // Group bookings by room type
+        const groupedByType = {};
+        data.bookings.forEach((b) => {
+          const roomType = b.room_type || b.roomType || 'Unknown';
+          if (!groupedByType[roomType]) {
+            groupedByType[roomType] = {
+              roomType: roomType,
+              bookings: [],
+              roomTypeId: b.room_type_id,
+              checkIn: b.check_in,
+              checkOut: b.check_out,
+            };
+          }
+          groupedByType[roomType].bookings.push(b);
+        });
+        
+        const groups = Object.values(groupedByType);
+        setRoomTypeGroups(groups);
+        
+        // Initialize room assignments - one array per room type
+        // Pre-populate with existing room numbers if any
         const assignments = {};
-        data.bookings.forEach((b, index) => {
-          assignments[b.booking_id] = b.room_number || '';
+        groups.forEach((group) => {
+          const existingRooms = group.bookings
+            .map(b => b.room_number)
+            .filter(rn => rn && rn !== '—' && rn !== '' && rn !== null);
+          assignments[group.roomType] = existingRooms;
         });
         setRoomAssignments(assignments);
-        // Fetch available rooms
-        fetchAvailableRooms(data.bookings[0]);
+        
+        // Fetch available rooms for each room type
+        groups.forEach((group) => {
+          fetchAvailableRoomsForType(group);
+        });
       } else {
         console.error('API returned success: false or no bookings', data);
         setBookingGroup({ 
@@ -111,7 +140,7 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
     }
   };
 
-  const fetchAvailableRooms = async (bookingItem) => {
+  const fetchAvailableRoomsForType = async (roomTypeGroup) => {
     try {
       // Get token from context or localStorage as fallback
       const authToken = token || localStorage.getItem("token");
@@ -126,45 +155,83 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       }
       
       const response = await fetch(
-        `https://rrh-backend.vercel.app/api/bookings/admin/available-rooms?room_type_id=${bookingItem.room_type_id}&check_in=${bookingItem.check_in}&check_out=${bookingItem.check_out}`,
+        `https://rrh-backend.vercel.app/api/bookings/admin/available-rooms?room_type_id=${roomTypeGroup.roomTypeId}&check_in=${roomTypeGroup.checkIn}&check_out=${roomTypeGroup.checkOut}`,
         {
           headers,
         }
       );
       const data = await response.json();
       if (data.success) {
-        setAvailableRooms(data.rooms || []);
+        setAvailableRooms(prev => ({
+          ...prev,
+          [roomTypeGroup.roomType]: data.rooms || []
+        }));
       }
     } catch (error) {
       console.error('Error fetching available rooms:', error);
     }
   };
 
-  const handleRoomAssignment = (bookingId, roomNumber) => {
-    setRoomAssignments((prev) => ({
-      ...prev,
-      [bookingId]: roomNumber,
-    }));
+  const handleRoomAssignment = (roomType, roomNumber, isSelected) => {
+    setRoomAssignments((prev) => {
+      const currentRooms = prev[roomType] || [];
+      let newRooms;
+      
+      if (isSelected) {
+        // Add room if not already selected
+        if (!currentRooms.includes(roomNumber)) {
+          newRooms = [...currentRooms, roomNumber];
+        } else {
+          newRooms = currentRooms;
+        }
+      } else {
+        // Remove room
+        newRooms = currentRooms.filter(rn => rn !== roomNumber);
+      }
+      
+      return {
+        ...prev,
+        [roomType]: newRooms,
+      };
+    });
   };
 
   const handleConfirm = async () => {
-    if (!bookingGroup) return;
+    if (!bookingGroup || !roomTypeGroups.length) return;
 
     // Validate all rooms are assigned
-    const unassigned = bookingGroup.bookings.filter(
-      (b) => !roomAssignments[b.booking_id] || roomAssignments[b.booking_id].trim() === ''
-    );
+    // For each room type group, check if we have enough room assignments
+    const validationErrors = [];
+    roomTypeGroups.forEach((group) => {
+      const assignedRooms = roomAssignments[group.roomType] || [];
+      const requiredCount = group.bookings.length;
+      
+      if (assignedRooms.length < requiredCount) {
+        validationErrors.push(
+          `${group.roomType}: Need ${requiredCount} room(s), but only ${assignedRooms.length} selected.`
+        );
+      }
+    });
 
-    if (unassigned.length > 0) {
-      alert('Please assign room numbers to all bookings before confirming.');
+    if (validationErrors.length > 0) {
+      alert('Please assign room numbers to all bookings:\n\n' + validationErrors.join('\n'));
       return;
     }
 
     setLoading(true);
     try {
-      // Assign room numbers
-      const bookingIds = bookingGroup.bookings.map((b) => b.booking_id);
-      const roomNumbers = bookingIds.map((id) => roomAssignments[id]);
+      // Map room assignments to booking IDs
+      // For each room type, assign rooms to bookings in order
+      const bookingIds = [];
+      const roomNumbers = [];
+      
+      roomTypeGroups.forEach((group) => {
+        const assignedRooms = roomAssignments[group.roomType] || [];
+        group.bookings.forEach((booking, index) => {
+          bookingIds.push(booking.booking_id);
+          roomNumbers.push(assignedRooms[index] || '');
+        });
+      });
 
       // Get token from context or localStorage as fallback
       const authToken = token || localStorage.getItem("token");
@@ -317,10 +384,12 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-semibold text-gray-700 mb-1 block">Room Type</label>
+                        <label className="text-sm font-semibold text-gray-700 mb-1 block">Room Type(s)</label>
                         <input
                           type="text"
-                          value={bookingGroup.roomType || ''}
+                          value={roomTypeGroups.length > 0 
+                            ? roomTypeGroups.map(g => `${g.roomType} (${g.bookings.length})`).join(', ')
+                            : bookingGroup.roomType || ''}
                           readOnly
                           className="w-full rounded-lg border border-gray-300 px-4 py-2 bg-gray-50 text-gray-700"
                         />
@@ -332,54 +401,106 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
                   <section className="bg-white rounded-2xl p-6 border border-gray-200">
                     <h3 className="text-xl font-bold text-gray-800 mb-4">Room Assignments</h3>
                     <div className="space-y-4">
-                      {bookingGroup.bookings.map((bookingItem, index) => (
-                        <div
-                          key={bookingItem.booking_id}
-                          className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-5 border border-gray-200"
-                        >
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-semibold text-gray-800">
-                              Room #{index + 1}
-                            </h4>
-                            <span className="text-sm text-gray-600">
-                              Booking ID: {bookingItem.booking_id}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
-                                Select Room Unit <span className="text-red-500">*</span>
-                              </label>
-                              <select
-                                value={roomAssignments[bookingItem.booking_id] || ''}
-                                onChange={(e) =>
-                                  handleRoomAssignment(bookingItem.booking_id, e.target.value)
-                                }
-                                className="w-full rounded-lg border-2 border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                required
-                              >
-                                <option value="">Select room unit...</option>
-                                {availableRooms.map((room) => (
-                                  <option key={room.room_id} value={room.room_number}>
-                                    {room.room_number} - {room.type_name}
-                                  </option>
-                                ))}
-                              </select>
-                              {!roomAssignments[bookingItem.booking_id] && (
-                                <p className="text-xs text-red-500 mt-1">Room number is required</p>
-                              )}
+                      {roomTypeGroups.map((group, groupIndex) => {
+                        const roomsForType = availableRooms[group.roomType] || [];
+                        const assignedRooms = roomAssignments[group.roomType] || [];
+                        const requiredCount = group.bookings.length;
+                        const hasError = assignedRooms.length < requiredCount;
+                        
+                        return (
+                          <div
+                            key={group.roomType}
+                            className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-5 border border-gray-200"
+                          >
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-800">
+                                  Room #{groupIndex + 1}
+                                </h4>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {group.roomType} - {requiredCount} room(s) needed
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm text-gray-600">
+                                  Booking IDs: {group.bookings.map(b => b.booking_id).join(', ')}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
-                                Available Rooms
-                              </label>
-                              <div className="w-full rounded-lg bg-gradient-to-br from-blue-500 via-cyan-500 to-yellow-500 border-2 border-transparent px-4 py-2.5 text-center text-white font-semibold">
-                                {availableRooms.length} rooms available
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                  Select Room Unit(s) <span className="text-red-500">*</span>
+                                </label>
+                                <div className="space-y-2 max-h-60 overflow-y-auto border-2 border-gray-300 rounded-lg p-3 bg-white">
+                                  {roomsForType.length === 0 ? (
+                                    <p className="text-sm text-gray-500 text-center py-2">
+                                      Loading available rooms...
+                                    </p>
+                                  ) : (
+                                    roomsForType.map((room) => {
+                                      const isSelected = assignedRooms.includes(room.room_number);
+                                      const canSelect = assignedRooms.length < requiredCount || isSelected;
+                                      
+                                      return (
+                                        <label
+                                          key={room.room_id}
+                                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${
+                                            isSelected
+                                              ? 'bg-blue-100 border-2 border-blue-500'
+                                              : canSelect
+                                              ? 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300'
+                                              : 'opacity-50 cursor-not-allowed bg-gray-50'
+                                          }`}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            disabled={!canSelect}
+                                            onChange={(e) =>
+                                              handleRoomAssignment(
+                                                group.roomType,
+                                                room.room_number,
+                                                e.target.checked
+                                              )
+                                            }
+                                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                                          />
+                                          <span className="flex-1 text-sm font-medium text-gray-700">
+                                            {room.room_number}
+                                          </span>
+                                        </label>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                                {hasError && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    Please select {requiredCount} room(s) for {group.roomType}
+                                  </p>
+                                )}
+                                {assignedRooms.length > 0 && (
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Selected: {assignedRooms.join(', ')}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                  Available Rooms
+                                </label>
+                                <div className="w-full rounded-lg bg-gradient-to-br from-blue-500 via-cyan-500 to-yellow-500 border-2 border-transparent px-4 py-2.5 text-center text-white font-semibold">
+                                  {roomsForType.length} rooms available
+                                </div>
+                                <div className="mt-2 text-sm text-gray-600">
+                                  <p>Required: {requiredCount} room(s)</p>
+                                  <p>Selected: {assignedRooms.length} room(s)</p>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
 

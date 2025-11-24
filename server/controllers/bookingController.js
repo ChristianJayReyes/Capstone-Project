@@ -1134,21 +1134,23 @@ export const getBookingGroup = async (req, res) => {
 
     const primary = primaryBooking[0];
 
-    // Find all bookings with same email, check-in, check-out, and room_type_id
+    // Find all bookings with same email, check-in, and check-out (regardless of room type)
     // Include all statuses (Pending, Arrival, Check-in) to get the full booking group
     const [relatedBookings] = await db.query(
-      `SELECT b.*, rt.type_name AS room_type
+      `SELECT b.*, rt.type_name AS room_type, rt.room_type_id
        FROM bookings b
        JOIN room_types rt ON b.room_type_id = rt.room_type_id
        JOIN users u ON b.user_id = u.user_id
        WHERE u.email = ? 
        AND b.check_in = ? 
        AND b.check_out = ?
-       AND b.room_type_id = ?
        AND b.status IN ('Pending', 'Arrival', 'Check-in')
-       ORDER BY b.booking_id`,
-      [primary.email, primary.check_in, primary.check_out, primary.room_type_id]
+       ORDER BY rt.type_name, b.booking_id`,
+      [primary.email, primary.check_in, primary.check_out]
     );
+
+    // Calculate total price from all related bookings
+    const totalPrice = relatedBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
 
     res.json({
       success: true,
@@ -1156,10 +1158,12 @@ export const getBookingGroup = async (req, res) => {
       guestName: primary.full_name,
       email: primary.email,
       phone: primary.phone || '',
-      roomType: primary.room_type,
+      roomType: relatedBookings.length > 0 && new Set(relatedBookings.map(b => b.room_type)).size === 1
+        ? relatedBookings[0].room_type
+        : 'Multiple Types',
       checkIn: primary.check_in,
       checkOut: primary.check_out,
-      totalPrice: primary.total_price || 0,
+      totalPrice: totalPrice,
     });
   } catch (error) {
     console.error("Error fetching booking group:", error);

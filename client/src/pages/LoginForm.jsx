@@ -123,31 +123,41 @@ const LoginForm = () => {
 
     try {
       // First check if it's an admin user
-      const adminRes = await fetch(
-        "https://rrh-backend.vercel.app/api/auth/admin-login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      try {
+        const adminRes = await fetch(
+          "https://rrh-backend.vercel.app/api/auth/admin-login",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+          }
+        );
+        
+        if (adminRes.ok) {
+          const adminData = await adminRes.json();
+          if (adminData.success) {
+            // Admin login successful
+            loginUser(adminData.user, adminData.token);
+            Swal.fire({
+              icon: "success",
+              title: "Admin Login Successful!",
+              text: "Welcome back!",
+              timer: 2000,
+              showConfirmButton: false,
+            }).then(() => {
+              navigate("/owner");
+            });
+            return;
+          }
         }
-      );
-      
-      if (adminRes.ok) {
-        const adminData = await adminRes.json();
-        if (adminData.success) {
-          // Admin login successful
-          loginUser(adminData.user, adminData.token);
-          Swal.fire({
-            icon: "success",
-            title: "Admin Login Successful!",
-            text: "Welcome back!",
-            timer: 2000,
-            showConfirmButton: false,
-          }).then(() => {
-            navigate("/owner");
-          });
-          return;
+        // If admin login fails with 401, continue to regular login (not an admin)
+        // If it fails with other errors, log but continue
+        if (adminRes.status !== 401) {
+          console.warn("Admin login returned non-401 error:", adminRes.status);
         }
+      } catch (adminErr) {
+        // If admin login request fails completely, continue to regular login
+        console.warn("Admin login request failed, trying regular login:", adminErr);
       }
 
       // If not admin, try regular user login
@@ -160,6 +170,24 @@ const LoginForm = () => {
           captcha: captchaToken,
         }),
       });
+      
+      if (!userRes.ok) {
+        // Handle non-200 responses
+        let errorMessage = "Login failed. Please try again.";
+        try {
+          const errorData = await userRes.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If response is not JSON, use status-based message
+          if (userRes.status === 500) {
+            errorMessage = "Server error. Please try again later.";
+          } else if (userRes.status === 400) {
+            errorMessage = "Invalid credentials. Please check your email and password.";
+          }
+        }
+        setError(errorMessage);
+        return;
+      }
       
       const userData = await userRes.json();
       
@@ -179,7 +207,7 @@ const LoginForm = () => {
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError("Something went wrong. Please try again.");
+      setError("Network error. Please check your connection and try again.");
     }
   };
 

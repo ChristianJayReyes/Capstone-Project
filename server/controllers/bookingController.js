@@ -1271,6 +1271,107 @@ export const sendConfirmationEmail = async (req, res) => {
   }
 };
 
+// DELETE: Delete booking(s) permanently
+export const deleteBooking = async (req, res) => {
+  let connection;
+  try {
+    const { booking_id } = req.body;
+
+    if (!booking_id) {
+      return res.status(400).json({
+        success: false,
+        message: "booking_id is required",
+      });
+    }
+
+    const pool = await connectDB();
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Get booking details before deletion (for logging if needed)
+    const [booking] = await connection.query(
+      `SELECT booking_id, room_number, status FROM bookings WHERE booking_id = ?`,
+      [booking_id]
+    );
+
+    if (booking.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const bookingData = booking[0];
+
+    // If booking has a room assigned, set room status back to "Available"
+    if (bookingData.room_number) {
+      try {
+        const [roomResult] = await connection.query(
+          `SELECT room_id FROM rooms WHERE room_number = ?`,
+          [bookingData.room_number]
+        );
+        if (roomResult.length > 0) {
+          await connection.query(
+            `UPDATE rooms SET status = 'Available' WHERE room_id = ?`,
+            [roomResult[0].room_id]
+          );
+          console.log(`✅ Room ${bookingData.room_number} set back to Available after deletion`);
+        }
+      } catch (roomError) {
+        console.error("Error updating room status on deletion:", roomError);
+        // Continue with deletion even if room update fails
+      }
+    }
+
+    // Delete related booking_logs entries
+    try {
+      await connection.query(
+        `DELETE FROM booking_logs WHERE booking_id = ?`,
+        [booking_id]
+      );
+    } catch (logError) {
+      console.error("Error deleting booking logs:", logError);
+      // Continue with deletion even if log deletion fails
+    }
+
+    // Delete the booking
+    const [result] = await connection.query(
+      `DELETE FROM bookings WHERE booking_id = ?`,
+      [booking_id]
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete booking",
+      });
+    }
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message: "Booking deleted successfully",
+    });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error("Error deleting booking:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete booking",
+      error: error.message,
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+};
+
 export const getBookingGroup = async (req, res) => {
   try {
     const db = await connectDB();

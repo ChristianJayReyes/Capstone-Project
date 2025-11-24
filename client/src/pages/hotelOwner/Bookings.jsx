@@ -5,6 +5,7 @@ import '../../styles/dashboard.css';
 import { useAppContext } from '../../context/AppContext';
 import ConfirmBookingModal from '../../components/hotelOwner/ConfirmBookingModal';
 import CheckInEditForm from '../../components/hotelOwner/CheckInEditForm';
+import { Trash2 } from 'lucide-react';
 
 const toManilaDateTime = (date = new Date()) => {
   const manilaTime = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
@@ -213,10 +214,14 @@ const Bookings = () => {
   
   // Cancel confirmation modal state
   const [cancelModal, setCancelModal] = useState({ open: false, booking: null });
+  
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState({ open: false, booking: null });
 
   //API endpoints
   const BOOKINGS_API = 'https://rrh-backend.vercel.app/api/bookings/admin/all'; 
-  const UPDATE_STATUS_API = 'https://rrh-backend.vercel.app/api/bookings/admin/update-status'; 
+  const UPDATE_STATUS_API = 'https://rrh-backend.vercel.app/api/bookings/admin/update-status';
+  const DELETE_BOOKING_API = 'https://rrh-backend.vercel.app/api/bookings/admin/delete'; 
 
   const { token: contextToken } = useAppContext();
 
@@ -313,6 +318,14 @@ const Bookings = () => {
         return;
       }
 
+      // Handle Delete action
+      if (action === 'delete') {
+        // Open delete confirmation modal
+        setDeleteModal({ open: true, booking: booking });
+        setActionLoading(false);
+        return;
+      }
+
       if (response) {
         const result = await response.json();
         if (result.success) {
@@ -365,6 +378,47 @@ const Bookings = () => {
     } catch (err) {
       console.error('Cancel error', err);
       alert('An error occurred while canceling bookings. Check console.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.booking) return;
+    try {
+      setActionLoading(true);
+
+      // For grouped bookings, delete all booking IDs in the group
+      const bookingIds = deleteModal.booking.bookingIds || [deleteModal.booking.bookingId];
+      
+      // Delete all bookings in the group
+      const deletePromises = bookingIds.map(bookingId => 
+        fetch(DELETE_BOOKING_API, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            booking_id: bookingId,
+          }),
+        }).then(res => res.json())
+      );
+
+      const results = await Promise.all(deletePromises);
+      const allSuccess = results.every(r => r.success);
+      
+      if (allSuccess) {
+        setDeleteModal({ open: false, booking: null });
+        await refetch();
+        alert('Booking(s) deleted successfully');
+      } else {
+        const failedResults = results.filter(r => !r.success);
+        alert('Some bookings failed to delete: ' + failedResults.map(r => r.message || r.error).join(', '));
+      }
+    } catch (err) {
+      console.error('Delete error', err);
+      alert('An error occurred while deleting bookings. Check console.');
     } finally {
       setActionLoading(false);
     }
@@ -587,6 +641,14 @@ const Bookings = () => {
                                 >
                                   Cancel
                                 </button>
+                                <button
+                                  onClick={() => handleBookingAction(b, 'delete')}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center justify-center px-3 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-gray-600 hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete booking"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </>
                             )}
                             {/* Flow 2: Arrival + Paid -> Check-in & Cancel (also handle legacy 'confirmed' status) */}
@@ -605,6 +667,14 @@ const Bookings = () => {
                                   className="inline-flex items-center px-5 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-red-700 hover:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleBookingAction(b, 'delete')}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center justify-center px-3 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-gray-600 hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete booking"
+                                >
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </>
                             )}
@@ -625,6 +695,14 @@ const Bookings = () => {
                                 >
                                   Cancel
                                 </button>
+                                <button
+                                  onClick={() => handleBookingAction(b, 'delete')}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center justify-center px-3 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-gray-600 hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete booking"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </>
                             )}
                             {/* Flow 3: Check-in -> Check-out & Edit */}
@@ -643,6 +721,14 @@ const Bookings = () => {
                                   className="inline-flex items-center px-5 h-9 border border-blue-400 text-xs font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Edit
+                                </button>
+                                <button
+                                  onClick={() => handleBookingAction(b, 'delete')}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center justify-center px-3 h-9 border border-transparent text-xs font-medium rounded-lg text-white bg-gray-600 hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete booking"
+                                >
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </>
                             )}
@@ -860,6 +946,53 @@ const Bookings = () => {
                 </button>
                 <button
                   onClick={() => setCancelModal({ open: false, booking: null })}
+                  className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
+            <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl border text-center">
+              <div className="mb-5">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 mb-4">
+                  <Trash2 className="h-6 w-6 text-gray-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Delete Booking</h3>
+                <p className="text-sm text-gray-600 mb-4">Are you sure you want to permanently delete this booking? This action cannot be undone.</p>
+                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                  <div className="font-semibold">{deleteModal.booking?.guestName || ''}</div>
+                  {deleteModal.booking?.roomNumber && deleteModal.booking.roomNumber !== '—' && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Room {deleteModal.booking.roomNumber} • {deleteModal.booking.roomType}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleDeleteConfirm}
+                  className={`min-w-[120px] h-10 px-4 bg-gray-700 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Deleting...
+                    </>
+                  ) : 'Yes, Delete'}
+                </button>
+                <button
+                  onClick={() => setDeleteModal({ open: false, booking: null })}
                   className="min-w-[100px] h-10 px-4 border border-gray-300 text-gray-700 text-sm rounded-lg bg-white hover:bg-gray-100 transition-colors"
                   disabled={actionLoading}
                 >

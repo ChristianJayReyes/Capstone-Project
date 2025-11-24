@@ -12,7 +12,8 @@ import {
   getBookingGroup,
   assignRoomNumbers,
   getAvailableRoomsForBooking,
-  sendConfirmationEmail
+  sendConfirmationEmail,
+  deleteBooking
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
@@ -34,5 +35,6 @@ bookingRouter.get('/admin/group/:booking_id', protect, getBookingGroup);
 bookingRouter.post('/admin/assign-rooms', protect, assignRoomNumbers);
 bookingRouter.get('/admin/available-rooms', protect, getAvailableRoomsForBooking);
 bookingRouter.post('/admin/send-confirmation-email', protect, sendConfirmationEmail);
+bookingRouter.delete('/admin/delete', protect, deleteBooking);
 
 export default bookingRouter;

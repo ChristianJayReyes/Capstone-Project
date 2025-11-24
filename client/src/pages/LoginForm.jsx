@@ -133,8 +133,8 @@ const LoginForm = () => {
       );
       const adminData = await adminRes.json();
       if (adminData.success) {
-        localStorage.setItem("token", adminData.token);
-        localStorage.setItem("user", JSON.stringify(adminData.user));
+        // Use loginUser from context to properly set token and user in both localStorage and state
+        loginUser(adminData.user, adminData.token);
         alert("Admin Login Successfully!");
         navigate("/owner");
         return;

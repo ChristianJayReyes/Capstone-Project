@@ -154,8 +154,20 @@ router.post("/login", async (req, res) => {
         console.error("Error clearing OTP from database:", dbErr);
       }
       
-      // Return more specific error message
-      const errorMessage = emailErr.message || "Failed to send OTP email. Please try again later.";
+      // Return user-friendly error message (don't expose technical details)
+      let errorMessage = "Failed to send OTP email. Please try again later.";
+      
+      // Check if it's an email configuration error
+      if (emailErr.isEmailConfigError || emailErr.code === 'EAUTH' || 
+          (emailErr.message && emailErr.message.includes('authentication'))) {
+        errorMessage = "Email service is temporarily unavailable. Please contact support or try again later.";
+      } else if (emailErr.message && !emailErr.message.includes('535') && 
+                 !emailErr.message.includes('BadCredentials') &&
+                 !emailErr.message.includes('gsmtp')) {
+        // Only show non-technical error messages
+        errorMessage = emailErr.message;
+      }
+      
       return res.status(500).json({
         success: false,
         message: errorMessage,

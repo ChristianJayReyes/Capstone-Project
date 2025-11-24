@@ -79,6 +79,17 @@ export const sendEmail = async (to, otp) => {
       command: error.command,
       response: error.response,
     });
+    
+    // Check if it's a Gmail authentication error
+    if (error.code === 'EAUTH' || error.responseCode === 535 || 
+        (error.message && error.message.includes('535-5.7.8')) ||
+        (error.response && error.response.includes('BadCredentials'))) {
+      const authError = new Error("Email service authentication failed. Please contact support.");
+      authError.code = 'EAUTH';
+      authError.isEmailConfigError = true;
+      throw authError;
+    }
+    
     throw error;
   }
 };

@@ -116,7 +116,10 @@ router.post("/login", async (req, res) => {
 
     // Check if email credentials are configured
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.error("Email credentials not configured");
+      console.error("❌ Email credentials not configured");
+      console.error("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Set" : "❌ Missing");
+      console.error("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Set (hidden)" : "❌ Missing");
+      console.error("Available env vars:", Object.keys(process.env).filter(k => k.includes('EMAIL')));
       return res.status(500).json({
         success: false,
         message: "Email service not configured. Please contact support.",

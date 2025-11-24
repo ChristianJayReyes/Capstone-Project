@@ -3,6 +3,10 @@ import nodemailer from "nodemailer";
 // Check if email credentials are configured
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   console.warn("⚠️ EMAIL_USER or EMAIL_PASS not configured. Email sending will fail.");
+} else {
+  console.log("✅ Email credentials found in environment");
+  console.log("EMAIL_USER:", process.env.EMAIL_USER);
+  console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "***" + process.env.EMAIL_PASS.slice(-4) : "NOT SET");
 }
 
 const transporter = nodemailer.createTransport({
@@ -13,10 +17,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Verify transporter configuration
+// Verify transporter configuration (only log, don't block)
 transporter.verify(function (error, success) {
   if (error) {
-    console.error("❌ Email transporter verification failed:", error);
+    console.error("❌ Email transporter verification failed:", error.message);
+    if (error.code === 'EAUTH') {
+      console.error("⚠️ Authentication failed. Make sure you're using a Gmail App Password, not your regular password.");
+      console.error("⚠️ To get an App Password: Google Account → Security → 2-Step Verification → App passwords");
+    }
   } else {
     console.log("✅ Email transporter is ready to send emails");
   }

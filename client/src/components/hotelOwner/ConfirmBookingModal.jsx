@@ -11,23 +11,59 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
   useEffect(() => {
     if (isOpen && booking) {
       fetchBookingGroup();
+    } else if (!isOpen) {
+      // Reset state when modal closes
+      setBookingGroup(null);
+      setAvailableRooms([]);
+      setRoomAssignments({});
+      setFetching(false);
     }
   }, [isOpen, booking]);
 
   const fetchBookingGroup = async () => {
-    if (!booking) return;
+    if (!booking) {
+      console.error('No booking provided to ConfirmBookingModal');
+      return;
+    }
+    
+    // Debug: Log the booking object
+    console.log('Fetching booking group for:', booking);
+    console.log('Booking ID:', booking.bookingId || booking.booking_id || booking.id);
+    
     setFetching(true);
     try {
-      const response = await fetch(
-        `https://rrh-backend.vercel.app/api/bookings/admin/group/${booking.bookingId}`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Try different possible booking ID fields
+      // For grouped bookings, use the first booking ID from bookingIds array
+      const bookingId = booking.bookingIds?.[0] || booking.bookingId || booking.booking_id || booking.id;
+      
+      if (!bookingId) {
+        console.error('No booking ID found in booking object:', booking);
+        setBookingGroup({ error: 'No booking ID found. Please try again.' });
+        setFetching(false);
+        return;
+      }
+      
+      const url = `https://rrh-backend.vercel.app/api/bookings/admin/group/${bookingId}`;
+      console.log('Fetching from URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to fetch booking group: ${response.status} ${response.statusText}`);
+      }
+      
       const data = await response.json();
-      if (data.success) {
+      console.log('Booking group data:', data);
+      
+      if (data.success && data.bookings && data.bookings.length > 0) {
         setBookingGroup(data);
         // Initialize room assignments
         const assignments = {};
@@ -36,12 +72,17 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
         });
         setRoomAssignments(assignments);
         // Fetch available rooms
-        if (data.bookings.length > 0) {
-          fetchAvailableRooms(data.bookings[0]);
-        }
+        fetchAvailableRooms(data.bookings[0]);
+      } else {
+        console.error('API returned success: false or no bookings', data);
+        setBookingGroup({ 
+          error: data.message || 'No bookings found for this booking group. Please try again.' 
+        });
       }
     } catch (error) {
       console.error('Error fetching booking group:', error);
+      // Set an error state so we can show it to the user
+      setBookingGroup({ error: error.message });
     } finally {
       setFetching(false);
     }
@@ -188,10 +229,27 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
             {/* Content */}
             <div className="p-6 sm:p-8">
               {fetching ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <p className="text-gray-600">Loading booking details...</p>
                 </div>
-              ) : bookingGroup ? (
+              ) : bookingGroup?.error ? (
+                <div className="text-center py-12">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+                    <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Booking Details</h3>
+                    <p className="text-sm text-red-600 mb-4">{bookingGroup.error}</p>
+                    <button
+                      onClick={fetchBookingGroup}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : bookingGroup && !bookingGroup.error && bookingGroup.bookings ? (
                 <div className="space-y-6">
                   {/* Guest Information */}
                   <section className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-100">

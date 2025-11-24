@@ -138,6 +138,11 @@ const LoginForm = () => {
         alert("Admin Login Successfully!");
         navigate("/owner");
         return;
+      } else {
+        // Show error message if admin login fails
+        console.error("Admin login failed:", adminData.message);
+        // Don't show error here, let it fall through to regular login
+        // setError(adminData.message || "Admin login failed");
       }
 
       // Only try regular login if not admin

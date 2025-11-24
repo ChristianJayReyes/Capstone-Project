@@ -1067,7 +1067,10 @@ export const adminGetCalendarBookings = async (req, res) => {
         'Direct' as booking_source
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.user_id
-      WHERE b.status IN ('confirmed', 'checked-in', 'pending')
+      WHERE b.status IN ('Arrival', 'Check-in', 'confirmed', 'checked-in', 'Check-out')
+        AND b.room_number IS NOT NULL
+        AND b.room_number != ''
+        AND b.room_number != '—'
       ORDER BY b.check_in
     `);
     // Transform the data to match what the frontend expects
@@ -1396,10 +1399,16 @@ export const assignRoomNumbers = async (req, res) => {
         });
       }
 
-      // Update booking with room number
+      // Update booking with room number and confirm it (set status to Arrival)
       await connection.query(
-        `UPDATE bookings SET room_number = ? WHERE booking_id = ?`,
+        `UPDATE bookings SET room_number = ?, status = 'Arrival' WHERE booking_id = ?`,
         [roomNumber, bookingId]
+      );
+
+      // Update room status to "Booked"
+      await connection.query(
+        `UPDATE rooms SET status = 'Booked' WHERE room_id = ?`,
+        [room[0].room_id]
       );
     }
 

@@ -525,9 +525,26 @@ export const updateBookingStatus = async (req, res) => {
       checkOutDate = new Date(datetime).toISOString().split("T")[0];
     }
 
+    // Calculate payment status from payments if provided
+    let newPaymentStatus = currentPaymentStatus;
+    if (req.body.payments && Array.isArray(req.body.payments)) {
+      const paymentsTotal = req.body.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const otherChargesTotal = (req.body.otherCharges || []).reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+      const grandTotal = Number(currentBooking.total_price) + otherChargesTotal;
+      
+      // If payments total >= grand total, mark as Paid
+      if (paymentsTotal >= grandTotal) {
+        newPaymentStatus = "Paid";
+      } else if (paymentsTotal > 0) {
+        // Partial payment - still mark as Paid for now (can be changed to "Partial Payment" if needed)
+        newPaymentStatus = "Paid";
+      } else {
+        newPaymentStatus = "Not paid";
+      }
+    }
+
     // Define status and payment transitions
     let newStatus = currentStatus;
-    let newPaymentStatus = currentPaymentStatus;
 
     if (actionLower === "confirm") {
       newStatus = "Arrival";
@@ -608,13 +625,62 @@ export const updateBookingStatus = async (req, res) => {
     };
     const lastAction = lastActionMap[actionLower] || "Unknown";
 
+    // Check if notes column exists and if payments/otherCharges are provided
+    const hasNotes = await columnExists("notes");
+    let notesUpdate = null;
+    
+    if (hasNotes && (req.body.payments || req.body.otherCharges || req.body.bookingNotes)) {
+      // Get existing notes
+      const [existingNotes] = await connection.query(
+        "SELECT notes FROM bookings WHERE booking_id = ?",
+        [booking_id]
+      );
+      
+      let notesData = {};
+      if (existingNotes.length > 0 && existingNotes[0].notes) {
+        try {
+          notesData = typeof existingNotes[0].notes === 'string' 
+            ? JSON.parse(existingNotes[0].notes) 
+            : existingNotes[0].notes;
+        } catch (e) {
+          // If parsing fails, start fresh but preserve existing data if it's an object
+          if (typeof existingNotes[0].notes === 'object') {
+            notesData = existingNotes[0].notes;
+          }
+        }
+      }
+      
+      // Update payments, otherCharges, and bookingNotes
+      if (req.body.payments) {
+        notesData.payments = req.body.payments;
+      }
+      if (req.body.otherCharges) {
+        notesData.otherCharges = req.body.otherCharges;
+      }
+      if (req.body.bookingNotes !== undefined) {
+        notesData.bookingNotes = req.body.bookingNotes;
+      }
+      
+      notesUpdate = JSON.stringify(notesData);
+    }
+
     // Update booking based on action
     if (actionLower === "checkin" && datetime) {
       // datetime is already in Manila time from client, just store it directly
-      if (hasCheckInTime) {
+      if (hasCheckInTime && notesUpdate) {
+        await connection.query(
+          "UPDATE bookings SET status = ?, payment_status = ?, check_in_time = ?, notes = ? WHERE booking_id = ?",
+          [newStatus, storagePaymentStatus, datetime, notesUpdate, booking_id]
+        );
+      } else if (hasCheckInTime) {
         await connection.query(
           "UPDATE bookings SET status = ?, payment_status = ?, check_in_time = ? WHERE booking_id = ?",
           [newStatus, storagePaymentStatus, datetime, booking_id]
+        );
+      } else if (notesUpdate) {
+        await connection.query(
+          "UPDATE bookings SET status = ?, payment_status = ?, notes = ? WHERE booking_id = ?",
+          [newStatus, storagePaymentStatus, notesUpdate, booking_id]
         );
       } else {
         await connection.query(
@@ -624,10 +690,20 @@ export const updateBookingStatus = async (req, res) => {
       }
     } else if (actionLower === "checkout" && datetime) {
       // datetime is already in Manila time from client, just store it directly
-      if (hasCheckOutTime) {
+      if (hasCheckOutTime && notesUpdate) {
+        await connection.query(
+          "UPDATE bookings SET status = ?, payment_status = ?, check_out_time = ?, check_out = ?, notes = ? WHERE booking_id = ?",
+          [newStatus, storagePaymentStatus, datetime, checkOutDate, notesUpdate, booking_id]
+        );
+      } else if (hasCheckOutTime) {
         await connection.query(
           "UPDATE bookings SET status = ?, payment_status = ?, check_out_time = ?, check_out = ? WHERE booking_id = ?",
           [newStatus, storagePaymentStatus, datetime, checkOutDate, booking_id]
+        );
+      } else if (notesUpdate) {
+        await connection.query(
+          "UPDATE bookings SET status = ?, payment_status = ?, check_out = ?, notes = ? WHERE booking_id = ?",
+          [newStatus, storagePaymentStatus, checkOutDate, notesUpdate, booking_id]
         );
       } else {
         await connection.query(
@@ -636,18 +712,32 @@ export const updateBookingStatus = async (req, res) => {
         );
       }
     } else {
-      const [result] = await connection.query(
-        "UPDATE bookings SET status = ?, payment_status = ? WHERE booking_id = ?",
-        [newStatus, storagePaymentStatus, booking_id]
-      );
-
-      if (result.affectedRows === 0) {
-        await connection.rollback();
-        return res.status(500).json({
-          success: false,
-          message: "Update failed",
-          error: "No rows affected",
-        });
+      if (notesUpdate) {
+        const [result] = await connection.query(
+          "UPDATE bookings SET status = ?, payment_status = ?, notes = ? WHERE booking_id = ?",
+          [newStatus, storagePaymentStatus, notesUpdate, booking_id]
+        );
+        if (result.affectedRows === 0) {
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: "Update failed",
+            error: "No rows affected",
+          });
+        }
+      } else {
+        const [result] = await connection.query(
+          "UPDATE bookings SET status = ?, payment_status = ? WHERE booking_id = ?",
+          [newStatus, storagePaymentStatus, booking_id]
+        );
+        if (result.affectedRows === 0) {
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: "Update failed",
+            error: "No rows affected",
+          });
+        }
       }
     }
 
@@ -1454,6 +1544,28 @@ export const getBookingGroup = async (req, res) => {
     // Calculate total price from all related bookings
     const totalPrice = relatedBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
 
+    // Extract payments and other charges from notes field (stored as JSON)
+    let payments = [];
+    let otherCharges = [];
+    let bookingNotes = '';
+    
+    try {
+      if (primary.notes) {
+        const notesData = typeof primary.notes === 'string' ? JSON.parse(primary.notes) : primary.notes;
+        if (notesData.payments && Array.isArray(notesData.payments)) {
+          payments = notesData.payments;
+        }
+        if (notesData.otherCharges && Array.isArray(notesData.otherCharges)) {
+          otherCharges = notesData.otherCharges;
+        }
+        if (notesData.bookingNotes) {
+          bookingNotes = notesData.bookingNotes;
+        }
+      }
+    } catch (e) {
+      console.log('Error parsing notes:', e);
+    }
+
     res.json({
       success: true,
       bookings: relatedBookings,
@@ -1466,6 +1578,9 @@ export const getBookingGroup = async (req, res) => {
       checkIn: primary.check_in,
       checkOut: primary.check_out,
       totalPrice: totalPrice,
+      payments: payments,
+      otherCharges: otherCharges,
+      bookingNotes: bookingNotes,
     });
   } catch (error) {
     console.error("Error fetching booking group:", error);

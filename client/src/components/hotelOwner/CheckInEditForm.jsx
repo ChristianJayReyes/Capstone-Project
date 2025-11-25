@@ -167,20 +167,38 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
         // Calculate total room price from all bookings
         const totalPrice = data.totalPrice || data.bookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
         
+        // Get payments and other charges from API response
+        const existingPayments = data.payments && Array.isArray(data.payments) && data.payments.length > 0
+          ? data.payments.map((p, idx) => ({
+              id: idx + 1,
+              amount: Number(p.amount) || 0,
+              collectedAt: p.collectedAt || 'Cash',
+              date: p.date || new Date().toISOString().split('T')[0]
+            }))
+          : [{
+              id: 1,
+              amount: 0,
+              collectedAt: 'Cash',
+              date: new Date().toISOString().split('T')[0]
+            }];
+
+        const existingOtherCharges = data.otherCharges && Array.isArray(data.otherCharges)
+          ? data.otherCharges.map((c, idx) => ({
+              id: idx + 1,
+              description: c.description || '',
+              amount: Number(c.amount) || 0
+            }))
+          : [];
+        
         setFormData({
           guestName: data.guestName || fallbackData.guestName,
           guestPhone: data.phone || fallbackData.guestPhone,
           guestEmail: data.email || fallbackData.guestEmail,
           staySegments: segments,
           totalRoomPrice: totalPrice || fallbackData.totalPrice,
-          payments: [{
-            id: 1,
-            amount: 0,
-            collectedAt: 'Cash',
-            date: new Date().toISOString().split('T')[0]
-          }],
-          otherCharges: [],
-          bookingNotes: ''
+          payments: existingPayments,
+          otherCharges: existingOtherCharges,
+          bookingNotes: data.bookingNotes || ''
         });
 
         // Fetch available rooms for each segment
@@ -909,8 +927,17 @@ const CheckInEditForm = ({ isOpen, onClose, booking, mode = 'checkin', onSave, o
                 Payment Received
               </h3>
               <div className="text-right">
-                <span className="text-sm text-gray-600">Pending Amount:</span>
-                <span className="text-lg font-bold text-red-600 ml-2">₱{totals.pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                {totals.pendingAmount <= 0 ? (
+                  <>
+                    <span className="text-sm text-gray-600">Payment Status:</span>
+                    <span className="text-lg font-bold text-green-600 ml-2">Paid</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-600">Pending Amount:</span>
+                    <span className="text-lg font-bold text-red-600 ml-2">₱{totals.pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </>
+                )}
               </div>
             </div>
             <div className="space-y-4">

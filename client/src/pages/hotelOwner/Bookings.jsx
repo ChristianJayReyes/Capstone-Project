@@ -197,6 +197,7 @@ const Bookings = () => {
   const [roomTypeFilter, setRoomTypeFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
   const [checkOutFilter, setCheckOutFilter] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   
@@ -266,11 +267,14 @@ const Bookings = () => {
       const matchesRoomType = roomTypeFilter === 'all' || (b.roomTypeDisplay || b.roomType) === roomTypeFilter;
       const matchesDate = !dateFilter || b.checkInDate === dateFilter;
       const matchesCheckOut = !checkOutFilter || b.checkOutDate === checkOutFilter;
-      return matchesSearch && matchesStatus && matchesRoomType && matchesDate && matchesCheckOut;
+      const matchesPaymentStatus = paymentStatusFilter === 'all' || 
+        (paymentStatusFilter === 'paid' && b.normalizedPaymentStatus === 'paid') ||
+        (paymentStatusFilter === 'not_paid' && b.normalizedPaymentStatus === 'not_paid');
+      return matchesSearch && matchesStatus && matchesRoomType && matchesDate && matchesCheckOut && matchesPaymentStatus;
     });
     setFilteredBookings(filtered);
     setPage(1);
-  }, [bookings, searchTerm, statusFilter, roomTypeFilter, dateFilter, checkOutFilter]);
+  }, [bookings, searchTerm, statusFilter, roomTypeFilter, dateFilter, checkOutFilter, paymentStatusFilter]);
 
   // api action handler
   const handleBookingAction = async (booking, action) => {
@@ -472,7 +476,7 @@ const Bookings = () => {
 
         {/* Filters */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 my-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
               <input
@@ -496,6 +500,16 @@ const Bookings = () => {
                 <option value="cancelled">Cancelled</option>
                 <option value="checked_out">Checked-Out</option>
                 <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
+              <select value={paymentStatusFilter} onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white">
+                <option value="all">All Payments</option>
+                <option value="paid">Paid</option>
+                <option value="not_paid">Not Paid</option>
               </select>
             </div>
 
@@ -883,6 +897,9 @@ const Bookings = () => {
                   booking_id: checkinForm.booking.bookingId,
                   action: checkinForm.mode === 'edit' ? 'checkin' : 'checkin',
                   datetime: autoDatetime,
+                  payments: formData.payments || [],
+                  otherCharges: formData.otherCharges || [],
+                  bookingNotes: formData.bookingNotes || '',
                 }),
               });
               const result = await response.json();

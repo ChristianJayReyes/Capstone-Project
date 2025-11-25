@@ -1,58 +1,38 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import Title from '../../components/Title';
-
-// Load logs from backend
 
 const STATUS_CONFIG = {
-  'Confirmed': { 
-    color: 'bg-green-100 text-green-700 border-green-200',
-    label: 'Confirmed'
-  },
-  'Cancelled': { 
-    color: 'bg-red-100 text-red-700 border-red-200',
-    label: 'Cancelled'
-  },
-  'Checked-in': { 
+  'Arrival': { 
     color: 'bg-blue-100 text-blue-700 border-blue-200',
-    label: 'Checked-in'
+    label: 'Arrival'
   },
-  'Checked-out': { 
+  'Check-in': { 
+    color: 'bg-green-100 text-green-700 border-green-200',
+    label: 'Check-in'
+  },
+  'Check-out': { 
     color: 'bg-gray-100 text-gray-700 border-gray-200',
-    label: 'Checked-out'
+    label: 'Check-out'
+  },
+  'Cancel': { 
+    color: 'bg-red-100 text-red-700 border-red-200',
+    label: 'Cancel'
   },
 };
 
 const PAYMENT_STATUS_CONFIG = {
-  'Pending': {
-    color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    label: 'Pending'
-  },
-  'Partial Payment': {
-    color: 'bg-orange-100 text-orange-700 border-orange-200',
-    label: 'Partial Payment'
-  },
-  'Payment Complete': {
-    color: 'bg-green-100 text-green-700 border-green-200',
-    label: 'Payment Complete'
-  },
-  // Legacy support for old values
-  'Paid': {
-    color: 'bg-orange-100 text-orange-700 border-orange-200',
-    label: 'Partial Payment'
-  },
-  'Completed': {
-    color: 'bg-green-100 text-green-700 border-green-200',
-    label: 'Payment Complete'
-  },
   'Not Paid': {
     color: 'bg-red-100 text-red-700 border-red-200',
     label: 'Not Paid'
   },
+  'Paid': {
+    color: 'bg-green-100 text-green-700 border-green-200',
+    label: 'Paid'
+  },
 };
 
 const ROOM_TYPES = ['All', 'Dormitory Room', 'Superior Queen', 'Superior Twin', 'Deluxe Queen', 'Deluxe Twin', 'Presidential Queen', 'Presidential Twin', 'Family Room'];
-const STATUS_OPTIONS = ['All', 'Confirmed', 'Checked-in', 'Checked-out', 'Cancelled'];
-const PAYMENT_STATUS_OPTIONS = ['All', 'Pending', 'Partial Payment', 'Payment Complete'];
+const STATUS_OPTIONS = ['All', 'Arrival', 'Check-in', 'Check-out', 'Cancel'];
+const PAYMENT_STATUS_OPTIONS = ['All', 'Not Paid', 'Paid'];
 
 const BookingLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -62,8 +42,7 @@ const BookingLogs = () => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        // Updated endpoint to Node.js API
-        const res = await fetch('https://rrh-backend.vercel.app/api/bookings/admin/logs');
+        const res = await fetch('http://localhost:3000/api/bookings/admin/logs');
         const data = await res.json();
         
         if (!data.success) {
@@ -84,7 +63,6 @@ const BookingLogs = () => {
             return trimmed;
           };
           
-          // Normalize guest name: collapse whitespace/newlines so it appears on a single line
           const rawGuest = l.guest_name ?? 'Guest';
           const normalizedGuest = String(rawGuest).replace(/\s+/g, ' ').trim();
 
@@ -99,8 +77,9 @@ const BookingLogs = () => {
             roomType: l.room_type ?? l.type_name ?? '',
             checkIn: sanitizeDate(rawCheckIn),
             checkOut: sanitizeDate(rawCheckOut),
-            status: l.status ?? 'Confirmed',
-            paymentStatus: l.payment_status ?? 'Pending',
+            status: l.status ?? 'Arrival',
+            paymentStatus: l.payment_status ?? 'Not Paid',
+            grandTotal: l.grand_total ?? 0,
             lastAction: l.last_action ?? '',
             timestamp: l.action_timestamp ?? '',
             performedBy: l.performed_by || 'System',
@@ -122,13 +101,12 @@ const BookingLogs = () => {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('All');
   const [roomTypeFilter, setRoomTypeFilter] = useState('All');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const pageSize = 10; // Fixed at 10
+  const pageSize = 10;
   const [page, setPage] = useState(1);
   const [sortField, setSortField] = useState('action_timestamp');
   const [sortDirection, setSortDirection] = useState('desc');
   const [exporting, setExporting] = useState(false);
 
-  // Filtered and sorted logs
   const filteredLogs = useMemo(() => {
     let filtered = logs.filter(log => {
       const searchLower = search.toLowerCase();
@@ -153,7 +131,6 @@ const BookingLogs = () => {
       return matchesSearch && matchesStatus && matchesPaymentStatus && matchesRoomType && matchesDateRange;
     });
 
-    // Sorting
     filtered.sort((a, b) => {
       let aValue = a[sortField];
       let bValue = b[sortField];
@@ -171,7 +148,6 @@ const BookingLogs = () => {
     return filtered;
   }, [logs, search, statusFilter, paymentStatusFilter, roomTypeFilter, dateRange, sortField, sortDirection]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredLogs.length / pageSize);
   const paginatedLogs = filteredLogs.slice((page - 1) * pageSize, page * pageSize);
 
@@ -192,7 +168,6 @@ const BookingLogs = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
-      // Build query parameters
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (statusFilter !== 'All') params.append('status', statusFilter);
@@ -201,109 +176,24 @@ const BookingLogs = () => {
       if (dateRange.start) params.append('date_from', dateRange.start);
       if (dateRange.end) params.append('date_to', dateRange.end);
       
-      console.log('Exporting with params:', params.toString());
-      
-      // Updated endpoint to Node.js API
-      const response = await fetch(`https://rrh-backend.vercel.app/api/bookings/admin/logs/export?${params.toString()}`);
+      const response = await fetch(`http://localhost:3000/api/bookings/admin/logs/export?${params.toString()}`);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Export response error:', response.status, errorText);
-        throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Export failed: ${response.status}`);
       }
       
-      // Check if response is actually CSV
-      const contentType = response.headers.get('content-type');
-      console.log('Response content-type:', contentType);
-      
-      // Get the blob data
       const blob = await response.blob();
-      console.log('Blob size:', blob.size, 'bytes');
-      
-      if (blob.size === 0) {
-        throw new Error('Export file is empty');
-      }
-      
-      // Default filename
-      const defaultFilename = `booking_logs_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      // Helper function to trigger download (fallback method)
-      const triggerDownload = () => {
-        try {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = defaultFilename;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          
-          // Clean up after a short delay
-          setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-          }, 100);
-        } catch (downloadError) {
-          console.error('Download trigger failed:', downloadError);
-          throw downloadError;
-        }
-      };
-      
-      // Try File System Access API first (Chrome, Edge, Opera)
-      // This requires HTTPS or localhost and must be called from a user gesture
-      const useFileSystemAPI = 'showSaveFilePicker' in window;
-      
-      if (useFileSystemAPI) {
-        try {
-          console.log('Attempting to use File System Access API');
-          
-          // Show file picker dialog - this will open the file explorer
-          const fileHandle = await window.showSaveFilePicker({
-            suggestedName: defaultFilename,
-            types: [{
-              description: 'CSV Files',
-              accept: {
-                'text/csv': ['.csv'],
-                'application/vnd.ms-excel': ['.csv'],
-              },
-            }],
-          });
-          
-          console.log('File handle obtained, writing file...');
-          
-          // Write the blob to the selected file
-          const writable = await fileHandle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-          
-          console.log('File saved successfully using File System Access API');
-          // Success - don't trigger download
-          return;
-        } catch (filePickerError) {
-          console.log('File System Access API error:', filePickerError.name, filePickerError.message);
-          
-          // User cancelled the dialog - this is fine, just return
-          if (filePickerError.name === 'AbortError') {
-            console.log('User cancelled file picker');
-            return;
-          }
-          
-          // Security error, permission denied, or other error - fall back to download
-          console.warn('File System Access API failed, falling back to download method. Error:', filePickerError);
-          // Continue to download fallback below
-        }
-      } else {
-        console.log('File System Access API not available in this browser');
-      }
-      
-      // Fallback: Use standard download method
-      // This will download to the default download folder
-      // In most browsers, users can change the download location in browser settings
-      console.log('Using standard download method');
-      triggerDownload();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `booking_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert(`Failed to export booking logs: ${error.message || 'Unknown error'}\n\nPlease check the browser console for more details.`);
+      alert(`Failed to export booking logs: ${error.message}`);
     } finally {
       setExporting(false);
     }
@@ -329,12 +219,18 @@ const BookingLogs = () => {
     });
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP'
+    }).format(amount || 0);
+  };
+
   return (
     <div className="w-full flex justify-center overflow-x-visible">
       <div className="w-full max-w-[90rem] px-4">
         {/* Page Header */}
         <div className="mb-8">
-          {/* Title and Action Buttons */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold text-gray-800">Booking Logs</h1>
@@ -371,7 +267,6 @@ const BookingLogs = () => {
         {/* Search & Filter Bar */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Search Box */}
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
               <input
@@ -383,7 +278,6 @@ const BookingLogs = () => {
               />
             </div>
 
-            {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
@@ -397,7 +291,6 @@ const BookingLogs = () => {
               </select>
             </div>
 
-            {/* Payment Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
               <select
@@ -411,7 +304,6 @@ const BookingLogs = () => {
               </select>
             </div>
 
-            {/* Room Type Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Room Type</label>
               <select
@@ -426,7 +318,6 @@ const BookingLogs = () => {
             </div>
           </div>
 
-          {/* Date Range Filter */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Date Range</label>
@@ -447,7 +338,6 @@ const BookingLogs = () => {
               </div>
             </div>
 
-            {/* Results Count */}
             <div className="flex items-end">
               <p className="text-sm text-gray-600">
                 {loading ? (
@@ -461,7 +351,7 @@ const BookingLogs = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-visible w-full">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto w-full">
           <table className="min-w-full table-auto">
             <thead className="bg-gray-50">
               <tr>
@@ -519,6 +409,16 @@ const BookingLogs = () => {
                     )}
                   </div>
                 </th>
+                <th className="py-4 px-4 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('grandTotal')}>
+                  <div className="flex items-center justify-end gap-2">
+                    Grand Total
+                    {sortField === 'grandTotal' && (
+                      <svg className={`w-4 h-4 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    )}
+                  </div>
+                </th>
                 <th className="py-4 px-4 text-left text-sm font-semibold text-gray-900">Last Action</th>
                 <th className="py-4 px-4 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('action_timestamp')}>
                   <div className="flex items-center gap-2">
@@ -535,7 +435,7 @@ const BookingLogs = () => {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center">
+                  <td colSpan={12} className="py-12 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
                       <p className="text-sm text-gray-500">Loading logs...</p>
@@ -544,7 +444,7 @@ const BookingLogs = () => {
                 </tr>
               ) : paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-gray-500">
+                  <td colSpan={12} className="py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
                       <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -576,7 +476,6 @@ const BookingLogs = () => {
                     </td>
                     <td className="py-4 px-6 text-center">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${STATUS_CONFIG[log.status]?.color || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                                {STATUS_CONFIG[log.status]?.icon || '•'}
                         {STATUS_CONFIG[log.status]?.label || log.status}
                       </span>
                     </td>
@@ -591,6 +490,9 @@ const BookingLogs = () => {
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
                       {formatDate(log.checkOut)}
+                    </td>
+                    <td className="py-4 px-4 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">
+                      {formatCurrency(log.grandTotal)}
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
                       {log.lastAction || '—'}

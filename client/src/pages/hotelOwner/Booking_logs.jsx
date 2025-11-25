@@ -42,7 +42,7 @@ const BookingLogs = () => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const res = await fetch('http://localhost:3000/api/bookings/admin/logs');
+        const res = await fetch('https://rrh-backend.vercel.app/api/bookings/admin/logs');
         const data = await res.json();
         
         if (!data.success) {
@@ -176,7 +176,7 @@ const BookingLogs = () => {
       if (dateRange.start) params.append('date_from', dateRange.start);
       if (dateRange.end) params.append('date_to', dateRange.end);
       
-      const response = await fetch(`http://localhost:3000/api/bookings/admin/logs/export?${params.toString()}`);
+      const response = await fetch(`https://rrh-backend.vercel.app/api/bookings/admin/logs/export?${params.toString()}`);
       
       if (!response.ok) {
         throw new Error(`Export failed: ${response.status}`);

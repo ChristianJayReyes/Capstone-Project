@@ -842,16 +842,31 @@ const Bookings = () => {
                           datetime: autoDatetime,
                         }),
                       });
+                      
+                      if (!response.ok) {
+                        // If response is not OK, try to parse error message
+                        let errorMessage = `Check-out failed: ${response.status} ${response.statusText}`;
+                        try {
+                          const errorData = await response.json();
+                          errorMessage = errorData.message || errorData.error || errorMessage;
+                        } catch (e) {
+                          // If JSON parsing fails, use status text
+                        }
+                        alert(errorMessage);
+                        setActionLoading(false);
+                        return;
+                      }
+                      
                       const result = await response.json();
                       if (result.success) {
                         await refetch();
                         setCheckoutModal({ open: false, booking: null, pendingConfirm: false });
                       } else {
-                        alert(`Check-out failed: ${result.message}`);
+                        alert(`Check-out failed: ${result.message || result.error || 'Update failed'}`);
                       }
                     } catch (error) {
                       console.error('Error:', error);
-                      alert(`Check-out failed: ${error.message}`);
+                      alert(`Check-out failed: ${error.message || 'Network error. Please try again.'}`);
                     } finally {
                       setActionLoading(false);
                     }
@@ -902,15 +917,29 @@ const Bookings = () => {
                   bookingNotes: formData.bookingNotes || '',
                 }),
               });
+              
+              if (!response.ok) {
+                // If response is not OK, try to parse error message
+                let errorMessage = `Update failed: ${response.status} ${response.statusText}`;
+                try {
+                  const errorData = await response.json();
+                  errorMessage = errorData.message || errorData.error || errorMessage;
+                } catch (e) {
+                  // If JSON parsing fails, use status text
+                }
+                alert(errorMessage);
+                return;
+              }
+              
               const result = await response.json();
               if (result.success) {
                 await refetch();
               } else {
-                alert(`Failed: ${result.message}`);
+                alert(`Failed: ${result.message || result.error || 'Update failed'}`);
               }
             } catch (error) {
               console.error('Error:', error);
-              alert(`Failed: ${error.message}`);
+              alert(`Failed: ${error.message || 'Network error. Please try again.'}`);
             }
           }}
           onSendEmail={async (formData) => {

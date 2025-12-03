@@ -28,6 +28,15 @@ bookingRouter.get('/hotel', protect, getHotelBookings);
 // Admin routes
 bookingRouter.get('/admin/all', getAllBookings);
 bookingRouter.post('/admin/update-status', updateBookingStatus);
+// Handle GET requests to update-status
+bookingRouter.get('/admin/update-status', (req, res) => {
+  res.status(405).json({
+    success: false,
+    message: 'Method not allowed. This endpoint only accepts POST requests.',
+    receivedMethod: 'GET',
+    expectedMethod: 'POST'
+  });
+});
 bookingRouter.get('/admin/logs', getBookingLogs);
 bookingRouter.get('/admin/logs/export', exportBookingLogs);
 bookingRouter.get('/admin/calendar', adminGetCalendarBookings);

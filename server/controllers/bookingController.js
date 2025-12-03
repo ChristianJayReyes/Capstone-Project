@@ -661,6 +661,20 @@ export const updateBookingStatus = async (req, res) => {
     };
     const lastAction = lastActionMap[actionLower] || "Unknown";
 
+    // Helper function to check if a column exists
+    const columnExists = async (columnName) => {
+      try {
+        const [columns] = await connection.query(
+          "SHOW COLUMNS FROM bookings LIKE ?",
+          [columnName]
+        );
+        return columns.length > 0;
+      } catch (error) {
+        console.error(`Error checking column ${columnName}:`, error);
+        return false;
+      }
+    };
+
     // Check if notes column exists and if payments/otherCharges are provided
     const hasNotes = await columnExists("notes");
     let notesUpdate = null;

@@ -521,8 +521,24 @@ export const updateBookingStatus = async (req, res) => {
       : "—";
     let checkOutDate = null;
 
-    if (actionLower === "checkout" && datetime) {
-      checkOutDate = new Date(datetime).toISOString().split("T")[0];
+    if (actionLower === "checkout") {
+      if (datetime) {
+        try {
+          const dateObj = new Date(datetime);
+          if (isNaN(dateObj.getTime())) {
+            console.error("Invalid datetime format:", datetime);
+            checkOutDate = currentBooking.check_out || new Date().toISOString().split("T")[0];
+          } else {
+            checkOutDate = dateObj.toISOString().split("T")[0];
+          }
+        } catch (error) {
+          console.error("Error parsing datetime:", error);
+          checkOutDate = currentBooking.check_out || new Date().toISOString().split("T")[0];
+        }
+      } else {
+        // If no datetime provided, use the booking's check_out date or today
+        checkOutDate = currentBooking.check_out || new Date().toISOString().split("T")[0];
+      }
     }
 
     // Calculate payment status from payments if provided
@@ -555,6 +571,26 @@ export const updateBookingStatus = async (req, res) => {
     } else if (actionLower === "checkout") {
       newStatus = "Check-out";
       newPaymentStatus = currentPaymentStatus; // Keep current payment status
+      
+      // If booking has a room assigned, set room status back to "Available"
+      if (currentBooking.room_number) {
+        try {
+          const [roomResult] = await connection.query(
+            `SELECT room_id FROM rooms WHERE room_number = ?`,
+            [currentBooking.room_number]
+          );
+          if (roomResult.length > 0) {
+            await connection.query(
+              `UPDATE rooms SET status = 'Available' WHERE room_id = ?`,
+              [roomResult[0].room_id]
+            );
+            console.log(`✅ Room ${currentBooking.room_number} set back to Available after check-out`);
+          }
+        } catch (roomError) {
+          console.error("Error updating room status on check-out:", roomError);
+          // Don't fail the check-out if room update fails, but log it
+        }
+      }
     } else if (actionLower === "cancel") {
       newStatus = "Cancelled";
       newPaymentStatus = currentPaymentStatus;
@@ -688,28 +724,62 @@ export const updateBookingStatus = async (req, res) => {
           [newStatus, storagePaymentStatus, booking_id]
         );
       }
-    } else if (actionLower === "checkout" && datetime) {
-      // datetime is already in Manila time from client, just store it directly
+    } else if (actionLower === "checkout") {
+      // Use datetime if provided, otherwise use current time
+      const checkoutDatetime = datetime || new Date().toISOString().slice(0, 19).replace('T', ' ');
+      
       if (hasCheckOutTime && notesUpdate) {
-        await connection.query(
+        const [result] = await connection.query(
           "UPDATE bookings SET status = ?, payment_status = ?, check_out_time = ?, check_out = ?, notes = ? WHERE booking_id = ?",
-          [newStatus, storagePaymentStatus, datetime, checkOutDate, notesUpdate, booking_id]
+          [newStatus, storagePaymentStatus, checkoutDatetime, checkOutDate, notesUpdate, booking_id]
         );
+        if (result.affectedRows === 0) {
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: "Update failed",
+            error: "No rows affected",
+          });
+        }
       } else if (hasCheckOutTime) {
-        await connection.query(
+        const [result] = await connection.query(
           "UPDATE bookings SET status = ?, payment_status = ?, check_out_time = ?, check_out = ? WHERE booking_id = ?",
-          [newStatus, storagePaymentStatus, datetime, checkOutDate, booking_id]
+          [newStatus, storagePaymentStatus, checkoutDatetime, checkOutDate, booking_id]
         );
+        if (result.affectedRows === 0) {
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: "Update failed",
+            error: "No rows affected",
+          });
+        }
       } else if (notesUpdate) {
-        await connection.query(
+        const [result] = await connection.query(
           "UPDATE bookings SET status = ?, payment_status = ?, check_out = ?, notes = ? WHERE booking_id = ?",
           [newStatus, storagePaymentStatus, checkOutDate, notesUpdate, booking_id]
         );
+        if (result.affectedRows === 0) {
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: "Update failed",
+            error: "No rows affected",
+          });
+        }
       } else {
-        await connection.query(
+        const [result] = await connection.query(
           "UPDATE bookings SET status = ?, payment_status = ?, check_out = ? WHERE booking_id = ?",
           [newStatus, storagePaymentStatus, checkOutDate, booking_id]
         );
+        if (result.affectedRows === 0) {
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: "Update failed",
+            error: "No rows affected",
+          });
+        }
       }
     } else {
       if (notesUpdate) {
@@ -878,6 +948,12 @@ export const updateBookingStatus = async (req, res) => {
       }
     }
     console.error("Error updating booking status:", error);
+    console.error("Error details:", {
+      booking_id: req.body.booking_id,
+      action: req.body.action,
+      datetime: req.body.datetime,
+      stack: error.stack
+    });
     res.status(500).json({
       success: false,
       message: "Update failed",
@@ -1675,16 +1751,16 @@ export const assignRoomNumbers = async (req, res) => {
       }
 
       // Check if room is already booked for these dates
+      // A room is unavailable if there's a booking that overlaps with the requested dates
+      // Overlap occurs when: booking.check_in < requested.check_out AND booking.check_out > requested.check_in
+      // Exclude cancelled bookings and the current booking being assigned
       const [existingBookings] = await connection.query(
         `SELECT booking_id FROM bookings 
          WHERE room_number = ? 
          AND booking_id != ?
-         AND (
-           (check_in <= ? AND check_out >= ?) OR
-           (check_in <= ? AND check_out >= ?) OR
-           (? <= check_in AND ? >= check_out)
-         )`,
-        [roomNumber, bookingId, check_in, check_in, check_out, check_out, check_in, check_out]
+         AND status NOT IN ('cancelled', 'Cancelled')
+         AND check_in < ? AND check_out > ?`,
+        [roomNumber, bookingId, check_out, check_in]
       );
 
       if (existingBookings.length > 0) {

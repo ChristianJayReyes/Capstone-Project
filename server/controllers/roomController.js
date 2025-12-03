@@ -529,14 +529,15 @@ export const adminGetRoomTypes = async (req, res) => {
   }
 };
 
-// Admin: Group rooms by room type
+// Admin: Group rooms by room type (only available rooms)
 export const adminGetGroupedRooms = async (req, res) => {
   try {
     const db = await connectDB();
     const [rows] = await db.query(`
       SELECT rt.type_name, r.room_number
       FROM room_types rt
-      LEFT JOIN rooms r ON r.room_type_id = rt.room_type_id
+      INNER JOIN rooms r ON r.room_type_id = rt.room_type_id
+      WHERE LOWER(r.status) = 'available'
       ORDER BY rt.type_name, r.room_number
     `);
     const grouped = {};

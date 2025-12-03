@@ -154,21 +154,44 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
       
-      const response = await fetch(
-        `https://rrh-backend.vercel.app/api/bookings/admin/available-rooms?room_type_id=${roomTypeGroup.roomTypeId}&check_in=${roomTypeGroup.checkIn}&check_out=${roomTypeGroup.checkOut}`,
-        {
-          headers,
-        }
-      );
+      const url = `https://rrh-backend.vercel.app/api/bookings/admin/available-rooms?room_type_id=${roomTypeGroup.roomTypeId}&check_in=${roomTypeGroup.checkIn}&check_out=${roomTypeGroup.checkOut}`;
+      console.log('Fetching available rooms for:', roomTypeGroup.roomType, 'from:', url);
+      
+      const response = await fetch(url, {
+        headers,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch available rooms:', response.status, errorText);
+        setAvailableRooms(prev => ({
+          ...prev,
+          [roomTypeGroup.roomType]: []
+        }));
+        return;
+      }
+      
       const data = await response.json();
+      console.log('Available rooms response for', roomTypeGroup.roomType, ':', data);
+      
       if (data.success) {
         setAvailableRooms(prev => ({
           ...prev,
           [roomTypeGroup.roomType]: data.rooms || []
         }));
+      } else {
+        console.error('API returned success: false for available rooms:', data.message || data.error);
+        setAvailableRooms(prev => ({
+          ...prev,
+          [roomTypeGroup.roomType]: []
+        }));
       }
     } catch (error) {
-      console.error('Error fetching available rooms:', error);
+      console.error('Error fetching available rooms for', roomTypeGroup.roomType, ':', error);
+      setAvailableRooms(prev => ({
+        ...prev,
+        [roomTypeGroup.roomType]: []
+      }));
     }
   };
 

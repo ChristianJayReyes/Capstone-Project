@@ -1744,28 +1744,27 @@ export const getAvailableRoomsForBooking = async (req, res) => {
       });
     }
 
-    // Get all available rooms of this type
+    // Get all available rooms of this type (case-insensitive status check)
     const [availableRooms] = await db.query(
       `SELECT r.room_id, r.room_number, r.status, rt.type_name
        FROM rooms r
        JOIN room_types rt ON r.room_type_id = rt.room_type_id
-       WHERE r.room_type_id = ? AND r.status = 'available'
+       WHERE r.room_type_id = ? AND LOWER(r.status) = 'available'
        ORDER BY r.room_number`,
       [room_type_id]
     );
 
     // Filter out rooms that are already booked for the selected dates
+    // A room is unavailable if there's a booking that overlaps with the requested dates
+    // Overlap occurs when: booking.check_in < requested.check_out AND booking.check_out > requested.check_in
     const filteredRooms = [];
     for (const room of availableRooms) {
       const [existingBookings] = await db.query(
         `SELECT booking_id FROM bookings
          WHERE room_number = ?
-         AND (
-           (check_in <= ? AND check_out >= ?) OR
-           (check_in <= ? AND check_out >= ?) OR
-           (? <= check_in AND ? >= check_out)
-         )`,
-        [room.room_number, check_in, check_in, check_out, check_out, check_in, check_out]
+         AND status NOT IN ('cancelled', 'Cancelled')
+         AND check_in < ? AND check_out > ?`,
+        [room.room_number, check_out, check_in]
       );
 
       if (existingBookings.length === 0) {

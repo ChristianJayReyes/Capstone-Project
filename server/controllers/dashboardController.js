@@ -43,11 +43,11 @@ export const getDashboardStats = async (req, res) => {
 
     const queries = [
       db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter}`),
-      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} payment_status = 'not paid'`),
-      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status = 'arrival'`),
-      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status = 'checked-in'`),
-      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status = 'checked-out'`),
-      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status = 'cancelled'`)
+      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} LOWER(payment_status) = 'not paid'`),
+      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status = 'Arrival'`),
+      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status IN ('Check-in', 'checked-in')`),
+      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status IN ('Check-out', 'checked-out')`),
+      db.query(`SELECT COUNT(*) AS count FROM bookings ${dateFilter ? dateFilter + " AND" : "WHERE"} status = 'Cancelled'`)
     ];
 
     const [

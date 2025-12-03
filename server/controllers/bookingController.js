@@ -858,73 +858,79 @@ export const updateBookingStatus = async (req, res) => {
       ? datetime 
       : getManilaTimestamp();
 
-    if (hasNewSchema) {
-      // Check for email and room_number columns
-      let hasEmail = false;
-      let hasRoomNumber = false;
-      try {
-        const [emailCol] = await connection.query(
-          "SHOW COLUMNS FROM booking_logs LIKE 'email'"
+    // Try to insert into booking_logs, but don't fail the operation if it fails
+    try {
+      if (hasNewSchema) {
+        // Check for email and room_number columns
+        let hasEmail = false;
+        let hasRoomNumber = false;
+        try {
+          const [emailCol] = await connection.query(
+            "SHOW COLUMNS FROM booking_logs LIKE 'email'"
+          );
+          hasEmail = emailCol.length > 0;
+
+          const [roomCol] = await connection.query(
+            "SHOW COLUMNS FROM booking_logs LIKE 'room_number'"
+          );
+          hasRoomNumber = roomCol.length > 0;
+        } catch (error) {
+          console.error("Error checking log columns:", error);
+        }
+
+        // Build dynamic INSERT query
+        const columns = ["booking_id", "guest_name"];
+        const values = [booking_id, guestName];
+        const placeholders = ["?", "?"];
+
+        if (hasEmail) {
+          columns.push("email");
+          values.push(email);
+          placeholders.push("?");
+        }
+
+        if (hasRoomNumber) {
+          columns.push("room_number");
+          values.push(roomNumber || "");
+          placeholders.push("?");
+        }
+
+        columns.push(
+          "payment_status",
+          "status",
+          "room",
+          "check_in",
+          "check_out",
+          "last_action",
+          "action_timestamp",
+          "performed_by"
         );
-        hasEmail = emailCol.length > 0;
-
-        const [roomCol] = await connection.query(
-          "SHOW COLUMNS FROM booking_logs LIKE 'room_number'"
+        values.push(
+          storagePaymentStatus,
+          newStatus,
+          room,
+          logCheckIn,
+          logCheckOut,
+          lastAction,
+          actionTimestamp, // Now uses Manila time consistently
+          "Admin"
         );
-        hasRoomNumber = roomCol.length > 0;
-      } catch (error) {
-        console.error("Error checking log columns:", error);
+        placeholders.push("?", "?", "?", "?", "?", "?", "?", "?");
+
+        const sql = `INSERT INTO booking_logs (${columns.join(
+          ", "
+        )}) VALUES (${placeholders.join(", ")})`;
+        await connection.query(sql, values);
+      } else {
+        // Use NOW() which will respect the timezone setting
+        await connection.query(
+          "INSERT INTO booking_logs (booking_id, action, timestamp) VALUES (?, ?, NOW())",
+          [booking_id, lastAction]
+        );
       }
-
-      // Build dynamic INSERT query
-      const columns = ["booking_id", "guest_name"];
-      const values = [booking_id, guestName];
-      const placeholders = ["?", "?"];
-
-      if (hasEmail) {
-        columns.push("email");
-        values.push(email);
-        placeholders.push("?");
-      }
-
-      if (hasRoomNumber) {
-        columns.push("room_number");
-        values.push(roomNumber || "");
-        placeholders.push("?");
-      }
-
-      columns.push(
-        "payment_status",
-        "status",
-        "room",
-        "check_in",
-        "check_out",
-        "last_action",
-        "action_timestamp",
-        "performed_by"
-      );
-      values.push(
-        storagePaymentStatus,
-        newStatus,
-        room,
-        logCheckIn,
-        logCheckOut,
-        lastAction,
-        actionTimestamp, // Now uses Manila time consistently
-        "Admin"
-      );
-      placeholders.push("?", "?", "?", "?", "?", "?", "?", "?");
-
-      const sql = `INSERT INTO booking_logs (${columns.join(
-        ", "
-      )}) VALUES (${placeholders.join(", ")})`;
-      await connection.query(sql, values);
-    } else {
-      // Use NOW() which will respect the timezone setting
-      await connection.query(
-        "INSERT INTO booking_logs (booking_id, action, timestamp) VALUES (?, ?, NOW())",
-        [booking_id, lastAction]
-      );
+    } catch (logError) {
+      console.error("Error inserting into booking_logs (non-critical):", logError);
+      // Don't fail the operation if logging fails - the booking update is more important
     }
 
     await connection.commit();

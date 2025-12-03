@@ -288,6 +288,7 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
       const confirmAuthToken = token || localStorage.getItem("token");
       
       // Confirm all bookings in parallel
+      // Use Promise.allSettled to handle partial failures gracefully
       const confirmPromises = bookingIds.map(bookingId =>
         fetch(
           'https://rrh-backend.vercel.app/api/bookings/admin/update-status',
@@ -302,40 +303,77 @@ const ConfirmBookingModal = ({ isOpen, onClose, booking, onConfirm }) => {
               action: 'confirm',
             }),
           }
-        ).then(res => res.json())
+        )
+        .then(async res => {
+          const data = await res.json();
+          if (!res.ok) {
+            // If response is not OK, return error but don't throw
+            return { success: false, message: data.message || data.error || 'Update failed', status: res.status };
+          }
+          return data;
+        })
+        .catch(error => {
+          // Network errors or other fetch errors
+          console.error(`Error confirming booking ${bookingId}:`, error);
+          return { success: false, message: error.message || 'Network error', error: true };
+        })
       );
 
-      const confirmResults = await Promise.all(confirmPromises);
-      const allConfirmed = confirmResults.every(result => result.success);
+      const confirmResults = await Promise.allSettled(confirmPromises);
+      
+      // Extract results from settled promises
+      const results = confirmResults.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        } else {
+          return { success: false, message: result.reason?.message || 'Unknown error', bookingId: bookingIds[index] };
+        }
+      });
+      
+      const allConfirmed = results.every(result => result.success);
+      const failedResults = results.filter(r => !r.success);
       
       if (allConfirmed) {
         // Send confirmation email with all booking details
         // Use the first booking ID to trigger email (backend will collect all related bookings)
-        const emailResponse = await fetch(
-          'https://rrh-backend.vercel.app/api/bookings/admin/send-confirmation-email',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${confirmAuthToken}`,
-            },
-            body: JSON.stringify({
-              booking_id: bookingIds[0], // Use first booking ID to identify the group
-            }),
+        try {
+          const emailResponse = await fetch(
+            'https://rrh-backend.vercel.app/api/bookings/admin/send-confirmation-email',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${confirmAuthToken}`,
+              },
+              body: JSON.stringify({
+                booking_id: bookingIds[0], // Use first booking ID to identify the group
+              }),
+            }
+          );
+          
+          const emailData = await emailResponse.json();
+          if (!emailData.success) {
+            console.warn('Failed to send confirmation email:', emailData.message);
+            // Don't fail the confirmation if email fails
+          } else {
+            console.log('Confirmation email sent successfully');
           }
-        );
-        
-        const emailData = await emailResponse.json();
-        if (!emailData.success) {
-          console.warn('Failed to send confirmation email:', emailData.message);
+        } catch (emailError) {
+          console.warn('Error sending confirmation email:', emailError);
           // Don't fail the confirmation if email fails
         }
         
         onConfirm();
         onClose();
       } else {
-        const failedResults = confirmResults.filter(r => !r.success);
-        alert(`Failed to confirm some bookings: ${failedResults.map(r => r.message).join(', ')}`);
+        // Some bookings failed, but check if any succeeded
+        const succeededCount = results.filter(r => r.success).length;
+        if (succeededCount > 0) {
+          // Some succeeded, refresh to show updated status
+          console.warn(`${succeededCount} booking(s) confirmed, but ${failedResults.length} failed`);
+          onConfirm(); // Refresh the list to show updated bookings
+        }
+        alert(`Failed to confirm some bookings: ${failedResults.map(r => r.message || 'Update failed').join(', ')}`);
       }
     } catch (error) {
       console.error('Error confirming booking:', error);
